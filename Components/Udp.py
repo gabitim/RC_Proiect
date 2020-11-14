@@ -25,3 +25,4 @@ def send(packet, socket, address):
 def receive(socket):
     packet, address = socket.recvfrom(1024)
     return packet, address
+
