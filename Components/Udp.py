@@ -3,6 +3,8 @@
 import socket
 import random
 
+import Sender
+
 # no of packet lost per 10 packets
 
 PACKETS_TO_BE_LOST = 2  # from QT
@@ -23,6 +25,6 @@ def send(packet, socket, address):
 
 # Receiving a packet with UDP
 def receive(socket):
-    packet, address = socket.recvfrom(1024)
+    packet, address = socket.recvfrom(Sender.PACKET_SIZE + 4)
     return packet, address
 
