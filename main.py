@@ -17,6 +17,7 @@ class MainWindow(QMainWindow):
 
         self.clientMode = MainWindow.SENDER_MODE
         self.connectButtons()
+        self.connectSliders()
 
     def connectButtons(self):
         self.senderButton.clicked.connect(self.chooseSender)
@@ -71,15 +72,43 @@ class MainWindow(QMainWindow):
         self.stackedWidget.setCurrentIndex(MainWindow.MODE_PAGE)
 
     def startTransmission(self):
+        # start transmission thread
         pass
 
         self.stackedWidget.setCurrentIndex(MainWindow.LOG_PAGE)
 
     def stopTransmission(self):
+        # safely stop transmission thread
         pass
 
         self.stackedWidget.setCurrentIndex(MainWindow.MODE_PAGE)
 
+    def connectSliders(self):
+        self.packetSizeSlider.valueChanged.connect(self.onPacketSizeChange)
+        self.windowSizeSlider.valueChanged.connect(self.onWindowSizeChange)
+        self.packetLossChanceSlider.valueChanged.connect(self.onPacketLossChanceChange)
+        self.packetCorruptionChanceSlider.valueChanged.connect(self.onPacketCorruptionChanceChange)
+        self.timeoutSlider.valueChanged.connect(self.onTimeoutChange)
+
+    def onPacketSizeChange(self):
+        newValue = self.packetSizeSlider.value()
+        self.packetSizeValueLabel.setText(str(newValue))
+
+    def onWindowSizeChange(self):
+        newValue = self.windowSizeSlider.value()
+        self.windowSizeValueLabel.setText(str(newValue))
+
+    def onPacketLossChanceChange(self):
+        newValue = self.packetLossChanceSlider.value()
+        self.packetLossChanceValueLabel.setText(str(newValue))
+
+    def onPacketCorruptionChanceChange(self):
+        newValue = self.packetCorruptionChanceSlider.value()
+        self.packetCorruptionChanceValueLabel.setText(str(newValue))
+
+    def onTimeoutChange(self):
+        newValue = self.timeoutSlider.value()
+        self.timeoutValueLabel.setText(str(newValue))
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
