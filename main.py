@@ -15,7 +15,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__(*args, **kwargs)
         loadUi("Front/form.ui", self)
 
-        self.clientMode = SENDER_MODE
+        self.clientMode = MainWindow.SENDER_MODE
         self.connectButtons()
 
     def connectButtons(self):
@@ -26,7 +26,7 @@ class MainWindow(QMainWindow):
         self.stopButton.clicked.connect(self.stopTransmission)
 
     def chooseSender(self):
-        self.clientMode = SENDER_MODE
+        self.clientMode = MainWindow.SENDER_MODE
 
         self.packetSizeLabel.setEnabled(1)
         self.packetSizeSlider.setEnabled(1)
@@ -44,10 +44,10 @@ class MainWindow(QMainWindow):
         self.timeoutSlider.setEnabled(1)
         self.timeoutValueLabel.setEnabled(1)
 
-        self.stackedWidget.setCurrentIndex(PARAMETERS_PAGE)
+        self.stackedWidget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
 
     def chooseReceiver(self):
-        self.clientMode = RECEIVER_MODE
+        self.clientMode = MainWindow.RECEIVER_MODE
 
         self.packetSizeLabel.setEnabled(0)
         self.packetSizeSlider.setEnabled(0)
@@ -65,16 +65,20 @@ class MainWindow(QMainWindow):
         self.timeoutSlider.setEnabled(0)
         self.timeoutValueLabel.setEnabled(0)
 
-        self.stackedWidget.setCurrentIndex(PARAMETERS_PAGE)
+        self.stackedWidget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
 
     def backToMode(self):
-        self.stackedWidget.setCurrentIndex(MODE_PAGE)
+        self.stackedWidget.setCurrentIndex(MainWindow.MODE_PAGE)
 
     def startTransmission(self):
         pass
 
+        self.stackedWidget.setCurrentIndex(MainWindow.LOG_PAGE)
+
     def stopTransmission(self):
         pass
+
+        self.stackedWidget.setCurrentIndex(MainWindow.MODE_PAGE)
 
 
 if __name__ == "__main__":
