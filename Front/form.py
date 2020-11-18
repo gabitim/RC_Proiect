@@ -232,6 +232,9 @@ class Ui_MainWindow(object):
         self.startButton.setFont(font)
         self.startButton.setObjectName("startButton")
         self.gridLayout_4.addWidget(self.startButton, 5, 2, 1, 1)
+        self.backButton = QtWidgets.QPushButton(self.paramPage)
+        self.backButton.setObjectName("backButton")
+        self.gridLayout_4.addWidget(self.backButton, 5, 0, 1, 1)
         self.gridLayout_3.addLayout(self.gridLayout_4, 0, 0, 1, 1)
         self.stackedWidget.addWidget(self.paramPage)
         self.logPage = QtWidgets.QWidget()
@@ -255,6 +258,7 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.stackedWidget, 1, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.menubar.setEnabled(False)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 19))
         font = QtGui.QFont()
         font.setPointSize(8)
@@ -262,6 +266,7 @@ class Ui_MainWindow(object):
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setEnabled(False)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
 
@@ -283,5 +288,6 @@ class Ui_MainWindow(object):
         self.packetLossChanceValue.setText(_translate("MainWindow", "1"))
         self.timeoutValue.setText(_translate("MainWindow", "5"))
         self.startButton.setText(_translate("MainWindow", "Start"))
+        self.backButton.setText(_translate("MainWindow", "Back"))
         self.stopButton.setText(_translate("MainWindow", "Stop"))
 import resources_rc
