@@ -7,7 +7,7 @@ from Front.form import Ui_MainWindow
 class MainWindow(QMainWindow):
     SENDER_MODE = 0
     RECEIVER_MODE = 1
-    SR_PAGE = 0
+    MODE_PAGE = 0
     PARAMETERS_PAGE = 1
     LOG_PAGE = 2
 
@@ -68,7 +68,7 @@ class MainWindow(QMainWindow):
         self.stackedWidget.setCurrentIndex(PARAMETERS_PAGE)
 
     def backToMode(self):
-        pass
+        self.stackedWidget.setCurrentIndex(MODE_PAGE)
 
     def startTransmission(self):
         pass
