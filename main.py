@@ -110,6 +110,10 @@ class MainWindow(QMainWindow):
         newValue = self.timeoutSlider.value()
         self.timeoutValueLabel.setText(str(newValue))
 
+    def log(self, logType, logMessage):
+        pass
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
