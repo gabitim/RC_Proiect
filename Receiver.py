@@ -77,6 +77,21 @@ class Receiver:
         file.close()
 
 
+def start_receiver(folder_name): #from QT
+    name = "SAVEDFILE"
+    filename = folder_name + SEP + name
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(RECEIVER_ADDRESS)
+
+    receive = Receiver(sock, filename)
+
+    # start the receiver --> waiting for the sender to send packets
+    receive.receive()
+
+    sock.close()
+
+
 if __name__ == '__main__':
     # TO BE LINKED WITH UI
 

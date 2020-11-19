@@ -4,6 +4,8 @@ from PyQt5.uic import loadUi
 
 from Front.form import Ui_MainWindow
 
+from Receiver import start_receiver
+
 class MainWindow(QMainWindow):
     SENDER_MODE = 0
     RECEIVER_MODE = 1
@@ -73,7 +75,8 @@ class MainWindow(QMainWindow):
 
     def startTransmission(self):
         # start transmission thread
-        pass
+        if self.clientMode == MainWindow.RECEIVER_MODE:
+            pass # here
 
         self.stackedWidget.setCurrentIndex(MainWindow.LOG_PAGE)
 
