@@ -41,7 +41,11 @@ class SenderAcknowledgementHandler:
 
         # we wait for the sender to send ack for the current LAR
         while True:
-            packet, _ = Udp.receive(self.socket)
+            try:
+                packet, _ = Udp.receive(self.socket)
+            except:
+                break
+
             ack, _ = ReceiverPacketHandler.extract_information(packet)
 
             # if we have ACK for the LAR
@@ -131,6 +135,7 @@ class Sender:
         print("we sent all the packets; Time to end ")
         Udp.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
         file.close()
+
 
 
 def start_sender(fileName):
