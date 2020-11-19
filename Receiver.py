@@ -41,7 +41,7 @@ class ReceiverAcknowledgementHandler:
 
 
 # receive packets and writes them into filename
-class Receiver:
+class Receiver: 
     def __init__(self, socket, filename):
         self.socket = socket
         self.filename = filename
