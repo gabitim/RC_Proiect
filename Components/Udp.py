@@ -25,4 +25,3 @@ def send(packet, socket, address):
 def receive(socket):
     packet, address = socket.recvfrom(Sender.PACKET_SIZE + 4)
     return packet, address
-

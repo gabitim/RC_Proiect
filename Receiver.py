@@ -3,6 +3,9 @@
 import socket
 import sys
 import os
+import PyQt5.QtCore
+import threading
+from PyQt5.QtCore import pyqtSlot
 
 SEP = os.path.sep
 
@@ -41,12 +44,24 @@ class ReceiverAcknowledgementHandler:
 
 
 # receive packets and writes them into filename
-class Receiver:
-    def __init__(self, socket, filename):
-        self.socket = socket
-        self.filename = filename
+class Receiver(PyQt5.QtCore.QObject):
+    log_signal = PyQt5.QtCore.pyqtSignal(str, str)
 
-    def receive(self):
+    def __init__(self, folder_name):
+        super().__init__()
+
+        filename = "SAVEDFILE.jpg"
+        filepath = folder_name + SEP + filename
+        self.filename = filepath
+
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind(RECEIVER_ADDRESS)
+
+    def start(self):
+        self._thread = threading.Thread(target=self.run)
+        self._thread.start()
+
+    def run(self):
         # try open, or create the file for writing
         try:
             file = open(self.filename, 'wb')
@@ -71,26 +86,24 @@ class Receiver:
 
             if can_write:
                 print(f"writing data from packet {LFR - 1} in the new file")
+                self.log_signal.emit('RCV', f'Packet {LFR - 1} received.')
+                self.log_signal.emit('SNT', f'Acknowledgement {LFR - 1} sent.')
                 file.write(data)
 
         # finnish writing --> closing the file
         file.close()
+        self.socket.close()
+
+
+def start_receiver(folderName): #from QT
+    receiver = Receiver(folderName)
+    receiver.start()
 
 
 if __name__ == '__main__':
-    # TO BE LINKED WITH UI
-
     # command line params:
     # 1. filename
 
-    filename = f"tests{SEP}SAVED3.pdf"
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(RECEIVER_ADDRESS)
-
-    receive = Receiver(sock, filename)
-
-    # start the receiver --> waiting for the sender to send packets
-    receive.receive()
-
-    sock.close()
+    # filename = f"tests{SEP}SAVED3.pdf"
+    folderName = "F:\\Proj\\RC_Proiect\\test\\receive"
+    start_receiver(folderName)

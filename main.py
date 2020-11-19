@@ -4,12 +4,24 @@ from PyQt5.uic import loadUi
 
 from Front.form import Ui_MainWindow
 
+from Receiver import Receiver
+from Sender import Sender
+
+
 class MainWindow(QMainWindow):
     SENDER_MODE = 0
     RECEIVER_MODE = 1
     MODE_PAGE = 0
     PARAMETERS_PAGE = 1
     LOG_PAGE = 2
+
+    COLOR_DICT = {
+        'SET' : '#C7EA46', # END OF TRANSMISSION (LIME GREEN)
+        'SNT' : '#000000', # SENT (BLACK)
+        'RCV' : '#1E90FF', # RECEIVED (LIGHT BLUE)
+        'ERR' : '#FF0000', # ERROR (RED)
+        'WRN' : '#994D00' # WARNING (ORANGE)
+    }
 
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
@@ -18,6 +30,8 @@ class MainWindow(QMainWindow):
         self.clientMode = MainWindow.SENDER_MODE
         self.connectButtons()
         self.connectSliders()
+
+        self.worker = None
 
     def connectButtons(self):
         self.senderButton.clicked.connect(self.chooseSender)
@@ -73,7 +87,16 @@ class MainWindow(QMainWindow):
 
     def startTransmission(self):
         # start transmission thread
-        pass
+        if self.clientMode == MainWindow.RECEIVER_MODE:
+            folderName = "F:\\Proj\\RC_Proiect\\test\\receive"
+            self.worker = Receiver(folderName)
+
+        if self.clientMode == MainWindow.SENDER_MODE:
+            fileName = "F:\\Proj\\RC_Proiect\\test\\send\\test.jpg"
+            self.worker = Sender(fileName)
+
+        self.worker.log_signal.connect(self.log)
+        self.worker.start()
 
         self.stackedWidget.setCurrentIndex(MainWindow.LOG_PAGE)
 
@@ -111,7 +134,8 @@ class MainWindow(QMainWindow):
         self.timeoutValueLabel.setText(str(newValue))
 
     def log(self, logType, logMessage):
-        pass
+        text = f'<span style="font-size:8pt; font-weight:600; color:{MainWindow.COLOR_DICT[logType]};">{logMessage}</span>'
+        self.logTextEdit.append(text)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,10 @@ import socket
 import os
 import sys
 import _thread
+import threading
 import time
+import PyQt5.QtCore
+from PyQt5.QtCore import pyqtSlot
 
 # import the modules scripts
 from Components import Logger, \
@@ -14,7 +17,7 @@ from Components import Logger, \
     Udp
 
 SEP = os.path.sep
-SENDER_ADDRESS = ('localhost', 0)
+SENDER_ADDRESS = ('localhost', 5050)
 SLEEP_INTERVAL = 0.05
 
 # parameters from UI QT; below are default values
@@ -41,7 +44,11 @@ class SenderAcknowledgementHandler:
 
         # we wait for the sender to send ack for the current LAR
         while True:
-            packet, _ = Udp.receive(self.socket)
+            try:
+                packet, _ = Udp.receive(self.socket)
+            except:
+                break
+
             ack, _ = ReceiverPacketHandler.extract_information(packet)
 
             # if we have ACK for the LAR
@@ -54,12 +61,23 @@ class SenderAcknowledgementHandler:
                 mutex.release()
 
 
-class Sender:
-    def __init__(self, socket, filename):
-        self.socket = socket
+class Sender(PyQt5.QtCore.QObject):
+    log_signal = PyQt5.QtCore.pyqtSignal(str, str)
+
+    def __init__(self, filename):
+        super().__init__()
+
         self.filename = filename
 
-    def send(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind(SENDER_ADDRESS)
+        self.filename = filename
+
+    def start(self):
+        self._thread = threading.Thread(target=self.run)
+        self._thread.start()
+
+    def run(self):
         global mutex
         global LAR
         global timer_object
@@ -107,6 +125,7 @@ class Sender:
             while LFS < LAR + window_size:
                 print(f"Sending packet: {LFS}")
                 Udp.send(packets[LFS], self.socket, RECEIVER_ADDRESS)
+                self.log_signal.emit('SNT', f'Packet {LFS} sent.')
                 LFS += 1
 
             # we put this thread to sleep until we have a timeout or we have ack
@@ -131,6 +150,12 @@ class Sender:
         print("we sent all the packets; Time to end ")
         Udp.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
         file.close()
+        self.socket.close()
+
+
+def start_sender(fileName):
+    sender = Sender(fileName)
+    sender.start()
 
 
 if __name__ == '__main__':
@@ -143,12 +168,7 @@ if __name__ == '__main__':
     # 4. Window size; default 4
     # 5. Timeout interval; default 0.5 sec
 
-    filename = f"tests{SEP}aa.gif"
+    # filename = f"tests{SEP}aa.gif"
+    fileName = "F:\\Proj\\RC_Proiect\\test\\send\\test.jpg"
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(SENDER_ADDRESS)
-
-    sender = Sender(sock, filename)
-    sender.send()
-
-    sock.close()
+    start_sender(fileName)
