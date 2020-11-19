@@ -17,13 +17,13 @@ from Components import Logger, \
     Udp
 
 SEP = os.path.sep
-SENDER_ADDRESS = ('localhost', 5050)
+SENDER_ADDRESS = ('localhost', 6663)
 SLEEP_INTERVAL = 0.05
 
 # parameters from UI QT; below are default values
 FILENAME = f"tests{SEP}test"
 PACKET_SIZE = 8096
-RECEIVER_ADDRESS = ('localhost', 8080)
+RECEIVER_ADDRESS = ('localhost', 9998)
 TIMEOUT_INTERVAL = 0.5
 WINDOW_SIZE = 4
 
@@ -169,6 +169,6 @@ if __name__ == '__main__':
     # 5. Timeout interval; default 0.5 sec
 
     # filename = f"tests{SEP}aa.gif"
-    fileName = "F:\\Proj\\RC_Proiect\\test\\send\\test.jpg"
+    fileName = f"test{SEP}send{SEP}test.jpg"
 
     start_sender(fileName)

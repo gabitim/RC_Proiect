@@ -1,4 +1,5 @@
 import sys
+import os
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.uic import loadUi
 
@@ -7,6 +8,7 @@ from Front.form import Ui_MainWindow
 from Receiver import Receiver
 from Sender import Sender
 
+SEP = os.path.sep
 
 class MainWindow(QMainWindow):
     SENDER_MODE = 0
@@ -88,11 +90,11 @@ class MainWindow(QMainWindow):
     def startTransmission(self):
         # start transmission thread
         if self.clientMode == MainWindow.RECEIVER_MODE:
-            folderName = "F:\\Proj\\RC_Proiect\\test\\receive"
+            folderName = f"test{SEP}receive"
             self.worker = Receiver(folderName)
 
         if self.clientMode == MainWindow.SENDER_MODE:
-            fileName = "F:\\Proj\\RC_Proiect\\test\\send\\test.jpg"
+            fileName = f"test{SEP}send{SEP}test.jpg"
             self.worker = Sender(fileName)
 
         self.worker.log_signal.connect(self.log)

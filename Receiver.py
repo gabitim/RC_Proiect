@@ -15,7 +15,7 @@ from Components import Logger, \
     Udp
 
 # parameter from QT ; default value below
-RECEIVER_ADDRESS = ('localhost', 8080)
+RECEIVER_ADDRESS = ('localhost', 9998)
 
 
 class ReceiverAcknowledgementHandler:
@@ -105,5 +105,5 @@ if __name__ == '__main__':
     # 1. filename
 
     # filename = f"tests{SEP}SAVED3.pdf"
-    folderName = "F:\\Proj\\RC_Proiect\\test\\receive"
+    folderName = f"test"
     start_receiver(folderName)
