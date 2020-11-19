@@ -7,6 +7,7 @@ import _thread
 import threading
 import time
 import PyQt5.QtCore
+from PyQt5.QtCore import pyqtSlot
 
 # import the modules scripts
 from Components import Logger, \
@@ -152,15 +153,9 @@ class Sender(PyQt5.QtCore.QObject):
         self.socket.close()
 
 
-
 def start_sender(fileName):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(SENDER_ADDRESS)
-
-    sender = Sender(sock, fileName)
-    sender.run()
-
-    sock.close()
+    sender = Sender(fileName)
+    sender.start()
 
 
 if __name__ == '__main__':
@@ -173,12 +168,7 @@ if __name__ == '__main__':
     # 4. Window size; default 4
     # 5. Timeout interval; default 0.5 sec
 
-    filename = f"tests{SEP}aa.gif"
+    # filename = f"tests{SEP}aa.gif"
+    fileName = "F:\\Proj\\RC_Proiect\\test\\send\\test.jpg"
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(SENDER_ADDRESS)
-
-    sender = Sender(sock, filename)
-    sender.send()
-
-    sock.close()
+    start_sender(fileName)

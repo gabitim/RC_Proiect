@@ -5,6 +5,7 @@ import sys
 import os
 import PyQt5.QtCore
 import threading
+from PyQt5.QtCore import pyqtSlot
 
 SEP = os.path.sep
 
@@ -51,7 +52,7 @@ class Receiver(PyQt5.QtCore.QObject):
 
         filename = "SAVEDFILE.jpg"
         filepath = folder_name + SEP + filename
-        self.filename = filename
+        self.filename = filepath
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(RECEIVER_ADDRESS)
@@ -94,35 +95,15 @@ class Receiver(PyQt5.QtCore.QObject):
         self.socket.close()
 
 
-def start_receiver(folder_name): #from QT
-    filename = "SAVEDFILE.jpg"
-    filepath = folder_name + SEP + filename
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(RECEIVER_ADDRESS)
-
-    receive = Receiver(sock, filepath)
-
-    # start the receiver --> waiting for the sender to send packets
-    receive.run()
-
-    sock.close()
+def start_receiver(folderName): #from QT
+    receiver = Receiver(folderName)
+    receiver.start()
 
 
 if __name__ == '__main__':
-    # TO BE LINKED WITH UI
-
     # command line params:
     # 1. filename
 
-    filename = f"tests{SEP}SAVED3.pdf"
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(RECEIVER_ADDRESS)
-
-    receive = Receiver(sock, filename)
-
-    # start the receiver --> waiting for the sender to send packets
-    receive.receive()
-
-    sock.close()
+    # filename = f"tests{SEP}SAVED3.pdf"
+    folderName = "F:\\Proj\\RC_Proiect\\test\\receive"
+    start_receiver(folderName)

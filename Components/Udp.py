@@ -24,5 +24,4 @@ def send(packet, socket, address):
 # Receiving a packet with UDP
 def receive(socket):
     packet, address = socket.recvfrom(Sender.PACKET_SIZE + 4)
-    print(f'socket is {socket}')
     return packet, address
