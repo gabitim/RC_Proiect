@@ -19,7 +19,7 @@ SLEEP_INTERVAL = 0.05
 
 # parameters from UI QT; below are default values
 FILENAME = f"tests{SEP}test"
-PACKET_SIZE = 1024
+PACKET_SIZE = 8096
 RECEIVER_ADDRESS = ('localhost', 8080)
 TIMEOUT_INTERVAL = 0.5
 WINDOW_SIZE = 4
@@ -143,7 +143,7 @@ if __name__ == '__main__':
     # 4. Window size; default 4
     # 5. Timeout interval; default 0.5 sec
 
-    filename = f"tests{SEP}ipv.pdf"
+    filename = f"tests{SEP}aa.gif"
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(SENDER_ADDRESS)

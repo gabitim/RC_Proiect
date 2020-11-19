@@ -83,7 +83,7 @@ if __name__ == '__main__':
     # command line params:
     # 1. filename
 
-    filename = f"tests{SEP}SAVED2"
+    filename = f"tests{SEP}SAVED3.pdf"
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(RECEIVER_ADDRESS)

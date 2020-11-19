@@ -7,14 +7,12 @@ import Sender
 
 # no of packet lost per 10 packets
 
-PACKETS_TO_BE_LOST = 2  # from QT
-DROP_PROBABILITY = 10 - PACKETS_TO_BE_LOST
-
+DROP_PROBABILITY = 5
 
 # Sending with UPD; simulating that some packets may be lost
 # with DROP_PROBABILITY rate
 def send(packet, socket, address):
-    if random.randint(0, DROP_PROBABILITY) > 0:
+    if random.randint(0, 100) > DROP_PROBABILITY:
         socket.sendto(packet, address)
         # logger -> ok
     else:
