@@ -1,10 +1,11 @@
 import sys
-import _thread
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.uic import loadUi
 
 from Front.form import Ui_MainWindow
 
+from Receiver import Receiver
+from Sender import Sender
 
 
 class MainWindow(QMainWindow):
@@ -29,6 +30,8 @@ class MainWindow(QMainWindow):
         self.clientMode = MainWindow.SENDER_MODE
         self.connectButtons()
         self.connectSliders()
+
+        self.worker = None
 
     def connectButtons(self):
         self.senderButton.clicked.connect(self.chooseSender)
@@ -84,6 +87,16 @@ class MainWindow(QMainWindow):
 
     def startTransmission(self):
         # start transmission thread
+        if self.clientMode == MainWindow.RECEIVER_MODE:
+            folderName = "F:\\Proj\\RC_Proiect\\test\\receive"
+            self.worker = Receiver(folderName)
+
+        if self.clientMode == MainWindow.SENDER_MODE:
+            fileName = "F:\\Proj\\RC_Proiect\\test\\send\\test.jpg"
+            self.worker = Sender(fileName)
+
+        self.worker.log_signal.connect(self.log)
+        self.worker.start()
 
         self.stackedWidget.setCurrentIndex(MainWindow.LOG_PAGE)
 
@@ -120,7 +133,7 @@ class MainWindow(QMainWindow):
         newValue = self.timeoutSlider.value()
         self.timeoutValueLabel.setText(str(newValue))
 
-    def log(self, logType, logMessage): # MainWindow.COLOR_DICT[logType]
+    def log(self, logType, logMessage):
         text = f'<span style="font-size:8pt; font-weight:600; color:{MainWindow.COLOR_DICT[logType]};">{logMessage}</span>'
         self.logTextEdit.append(text)
 

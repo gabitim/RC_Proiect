@@ -3,8 +3,6 @@
 import socket
 import sys
 import os
-import PyQt5.QtCore
-import threading
 
 SEP = os.path.sep
 
@@ -43,24 +41,12 @@ class ReceiverAcknowledgementHandler:
 
 
 # receive packets and writes them into filename
-class Receiver(PyQt5.QtCore.QObject):
-    log_signal = PyQt5.QtCore.pyqtSignal(str, str)
-
-    def __init__(self, folder_name):
-        super().__init__()
-
-        filename = "SAVEDFILE.jpg"
-        filepath = folder_name + SEP + filename
+class Receiver:
+    def __init__(self, socket, filename):
+        self.socket = socket
         self.filename = filename
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.bind(RECEIVER_ADDRESS)
-
-    def start(self):
-        self._thread = threading.Thread(target=self.run)
-        self._thread.start()
-
-    def run(self):
+    def receive(self):
         # try open, or create the file for writing
         try:
             file = open(self.filename, 'wb')
@@ -85,13 +71,10 @@ class Receiver(PyQt5.QtCore.QObject):
 
             if can_write:
                 print(f"writing data from packet {LFR - 1} in the new file")
-                self.log_signal.emit('RCV', f'Packet {LFR - 1} received.')
-                self.log_signal.emit('SNT', f'Acknowledgement {LFR - 1} sent.')
                 file.write(data)
 
         # finnish writing --> closing the file
         file.close()
-        self.socket.close()
 
 
 def start_receiver(folder_name): #from QT
@@ -104,7 +87,7 @@ def start_receiver(folder_name): #from QT
     receive = Receiver(sock, filepath)
 
     # start the receiver --> waiting for the sender to send packets
-    receive.run()
+    receive.receive()
 
     sock.close()
 

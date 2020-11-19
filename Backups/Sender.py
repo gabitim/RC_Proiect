@@ -4,9 +4,7 @@ import socket
 import os
 import sys
 import _thread
-import threading
 import time
-import PyQt5.QtCore
 
 # import the modules scripts
 from Components import Logger, \
@@ -60,23 +58,12 @@ class SenderAcknowledgementHandler:
                 mutex.release()
 
 
-class Sender(PyQt5.QtCore.QObject):
-    log_signal = PyQt5.QtCore.pyqtSignal(str, str)
-
-    def __init__(self, filename):
-        super().__init__()
-
+class Sender:
+    def __init__(self, socket, filename):
+        self.socket = socket
         self.filename = filename
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.bind(SENDER_ADDRESS)
-        self.filename = filename
-
-    def start(self):
-        self._thread = threading.Thread(target=self.run)
-        self._thread.start()
-
-    def run(self):
+    def send(self):
         global mutex
         global LAR
         global timer_object
@@ -124,7 +111,6 @@ class Sender(PyQt5.QtCore.QObject):
             while LFS < LAR + window_size:
                 print(f"Sending packet: {LFS}")
                 Udp.send(packets[LFS], self.socket, RECEIVER_ADDRESS)
-                self.log_signal.emit('SNT', f'Packet {LFS} sent.')
                 LFS += 1
 
             # we put this thread to sleep until we have a timeout or we have ack
@@ -149,7 +135,6 @@ class Sender(PyQt5.QtCore.QObject):
         print("we sent all the packets; Time to end ")
         Udp.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
         file.close()
-        self.socket.close()
 
 
 
@@ -158,7 +143,7 @@ def start_sender(fileName):
     sock.bind(SENDER_ADDRESS)
 
     sender = Sender(sock, fileName)
-    sender.run()
+    sender.send()
 
     sock.close()
 
