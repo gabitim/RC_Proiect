@@ -14,7 +14,7 @@ from Components import Logger, \
     Udp
 
 SEP = os.path.sep
-SENDER_ADDRESS = ('localhost', 0)
+SENDER_ADDRESS = ('localhost', 5050)
 SLEEP_INTERVAL = 0.05
 
 # parameters from UI QT; below are default values
@@ -131,6 +131,16 @@ class Sender:
         print("we sent all the packets; Time to end ")
         Udp.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
         file.close()
+
+
+def start_sender(fileName):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(SENDER_ADDRESS)
+
+    sender = Sender(sock, fileName)
+    sender.send()
+
+    sock.close()
 
 
 if __name__ == '__main__':

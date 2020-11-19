@@ -78,13 +78,13 @@ class Receiver:
 
 
 def start_receiver(folder_name): #from QT
-    name = "SAVEDFILE"
-    filename = folder_name + SEP + name
+    filename = "SAVEDFILE.jpg"
+    filepath = folder_name + SEP + filename
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(RECEIVER_ADDRESS)
 
-    receive = Receiver(sock, filename)
+    receive = Receiver(sock, filepath)
 
     # start the receiver --> waiting for the sender to send packets
     receive.receive()

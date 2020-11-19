@@ -1,10 +1,13 @@
 import sys
+import _thread
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.uic import loadUi
 
 from Front.form import Ui_MainWindow
 
 from Receiver import start_receiver
+from Sender import start_sender
+
 
 class MainWindow(QMainWindow):
     SENDER_MODE = 0
@@ -76,7 +79,12 @@ class MainWindow(QMainWindow):
     def startTransmission(self):
         # start transmission thread
         if self.clientMode == MainWindow.RECEIVER_MODE:
-            pass # here
+            folderName = "F:\\Proj\\RC_Proiect\\test\\receive"
+            _thread.start_new_thread(start_receiver, (folderName,))
+
+        if self.clientMode == MainWindow.SENDER_MODE:
+            fileName = "F:\\Proj\\RC_Proiect\\test\\send\\test.jpg"
+            _thread.start_new_thread(start_sender, (fileName,))
 
         self.stackedWidget.setCurrentIndex(MainWindow.LOG_PAGE)
 
