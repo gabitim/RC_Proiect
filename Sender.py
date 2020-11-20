@@ -6,8 +6,7 @@ import sys
 import _thread
 import threading
 import time
-import PyQt5.QtCore
-from PyQt5.QtCore import pyqtSlot
+from pydispatch import dispatcher
 
 # import the modules scripts
 from Components import Logger, \
@@ -34,8 +33,9 @@ timer_object = Timer.Timer(TIMEOUT_INTERVAL)  # instance of Timer class
 
 
 class SenderAcknowledgementHandler:
-    def __init__(self, socket):
+    def __init__(self, socket, LOG_SIGNAL):
         self.socket = socket
+        self.LOG_SIGNAL = LOG_SIGNAL
 
     def wait_for_ack(self):
         global LAR
@@ -52,6 +52,7 @@ class SenderAcknowledgementHandler:
             ack, _ = ReceiverPacketHandler.extract_information(packet)
 
             # if we have ACK for the LAR
+            dispatcher.send(self.LOG_SIGNAL, logType='RCV', logMessage=f'Acknowledgement {LAR} received.')
             print(f'Got ACK for {LAR}')
             if ack >= LAR:
                 mutex.acquire()
@@ -61,11 +62,9 @@ class SenderAcknowledgementHandler:
                 mutex.release()
 
 
-class Sender(PyQt5.QtCore.QObject):
-    log_signal = PyQt5.QtCore.pyqtSignal(str, str)
-
-    def __init__(self, filename):
-        super().__init__()
+class Sender:
+    def __init__(self, filename, SIGNALS):
+        self.running = False
 
         self.filename = filename
 
@@ -73,9 +72,18 @@ class Sender(PyQt5.QtCore.QObject):
         self.socket.bind(SENDER_ADDRESS)
         self.filename = filename
 
+        # [LOG_SIGNAL, FINISH_SIGNAL, STOP_SIGNAL]
+        self.SIGNALS = SIGNALS
+        self.LOG_SIGNAL = self.SIGNALS[0]
+        self.FINISH_SIGNAL = self.SIGNALS[1]
+        self.STOP_SIGNAL = self.SIGNALS[2]
+
+        dispatcher.connect(self.STOP_SIGNAL, self.stop, weak=False)
+
     def start(self):
         self._thread = threading.Thread(target=self.run)
         self._thread.start()
+        self.running = True
 
     def run(self):
         global mutex
@@ -83,7 +91,7 @@ class Sender(PyQt5.QtCore.QObject):
         global timer_object
 
         # SenderAcknowledgementHandler object
-        ack_handler = SenderAcknowledgementHandler(self.socket)
+        ack_handler = SenderAcknowledgementHandler(self.socket, self.LOG_SIGNAL)
 
         # we try open the file
         try:
@@ -113,7 +121,7 @@ class Sender(PyQt5.QtCore.QObject):
         _thread.start_new_thread(ack_handler.wait_for_ack, ())
 
         # we run until all the packets are sent
-        while LAR < number_of_packets:
+        while self.running and LAR < number_of_packets:
             mutex.acquire()
 
             # starting the timer
@@ -125,7 +133,7 @@ class Sender(PyQt5.QtCore.QObject):
             while LFS < LAR + window_size:
                 print(f"Sending packet: {LFS}")
                 Udp.send(packets[LFS], self.socket, RECEIVER_ADDRESS)
-                self.log_signal.emit('SNT', f'Packet {LFS} sent.')
+                dispatcher.send(self.LOG_SIGNAL, logType='SNT', logMessage=f'Packet {LFS} sent.')
                 LFS += 1
 
             # we put this thread to sleep until we have a timeout or we have ack
@@ -146,11 +154,17 @@ class Sender(PyQt5.QtCore.QObject):
                 window_size = min(WINDOW_SIZE, number_of_packets - LAR)
             mutex.release()
 
-        # send an empty packet for breaking the loop and closing the file
-        print("we sent all the packets; Time to end ")
-        Udp.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
-        file.close()
-        self.socket.close()
+        if self.running: # normal sender execution end
+            # send an empty packet for breaking the loop and closing the file
+            print("we sent all the packets; Time to end ")
+            Udp.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
+            file.close()
+            self.socket.close()
+            self.running = False
+            dispatcher.send(self.FINISH_SIGNAL, type='NORMAL')
+
+    def stop(self):
+        self.running = False
 
 
 def start_sender(fileName):

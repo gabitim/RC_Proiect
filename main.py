@@ -5,10 +5,15 @@ from PyQt5.uic import loadUi
 
 from Front.form import Ui_MainWindow
 
+from pydispatch import dispatcher
+
 from Receiver import Receiver
 from Sender import Sender
 
 SEP = os.path.sep
+
+def createSignal():
+    return object()
 
 class MainWindow(QMainWindow):
     SENDER_MODE = 0
@@ -36,6 +41,11 @@ class MainWindow(QMainWindow):
         self.configureDialog()
 
         self.worker = None
+
+        self.LOG_SIGNAL = createSignal()
+        self.FINISH_SIGNAL = createSignal()
+        self.STOP_SIGNAL = createSignal()
+        self.SIGNALS = [self.LOG_SIGNAL, self.FINISH_SIGNAL, self.STOP_SIGNAL]
 
     def configureDialog(self):
         self.dialog.setAcceptMode(QFileDialog.AcceptOpen)
@@ -105,25 +115,32 @@ class MainWindow(QMainWindow):
 
     def startTransmission(self):
         if self.clientMode == MainWindow.RECEIVER_MODE:
-            folderName = f"test{SEP}receive"
             folderName = self.pathLineEdit.text()
-            self.worker = Receiver(folderName)
+            if folderName == '':
+                folderName = 'test'
+            self.worker = Receiver(folderName, self.SIGNALS)
 
         if self.clientMode == MainWindow.SENDER_MODE:
-            fileName = f"test{SEP}send{SEP}test.jpg"
             fileName = self.pathLineEdit.text()
-            self.worker = Sender(fileName)
 
-        self.worker.log_signal.connect(self.log)
+            parameters = []
+            parameters += [self.packetSizeSlider.value()]
+            parameters += [self.windowSizeSlider.value()]
+            parameters += [self.packetLossChanceSlider.value()]
+            parameters += [self.packetCorruptionChanceSlider.value()]
+            parameters += [self.timeoutSlider.value()]
+
+            self.worker = Sender(fileName, self.SIGNALS) # , parameters)
+
+        dispatcher.connect(self.log, self.LOG_SIGNAL, weak=False)
+        dispatcher.connect(self.onFinish, self.FINISH_SIGNAL, weak=False)
         self.worker.start()
 
         self.stackedWidget.setCurrentIndex(MainWindow.LOG_PAGE)
 
     def stopTransmission(self):
-        # safely stop transmission thread
-        pass
-
-        self.stackedWidget.setCurrentIndex(MainWindow.MODE_PAGE)
+        dispatcher.send(self.STOP_SIGNAL)
+        self.onFinish('KILL')
 
     def connectSliders(self):
         self.packetSizeSlider.valueChanged.connect(self.onPacketSizeChange)
@@ -131,6 +148,13 @@ class MainWindow(QMainWindow):
         self.packetLossChanceSlider.valueChanged.connect(self.onPacketLossChanceChange)
         self.packetCorruptionChanceSlider.valueChanged.connect(self.onPacketCorruptionChanceChange)
         self.timeoutSlider.valueChanged.connect(self.onTimeoutChange)
+
+    def onFinish(self, type):
+        if type.upper() == 'NORMAL':
+            # TODO dispay finished dialog
+            pass
+
+        self.stackedWidget.setCurrentIndex(MainWindow.MODE_PAGE)
 
     def browse(self):
         if self.dialog.exec() == QFileDialog.Accepted:

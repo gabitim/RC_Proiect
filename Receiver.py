@@ -3,9 +3,8 @@
 import socket
 import sys
 import os
-import PyQt5.QtCore
 import threading
-from PyQt5.QtCore import pyqtSlot
+from pydispatch import dispatcher
 
 SEP = os.path.sep
 
@@ -44,11 +43,9 @@ class ReceiverAcknowledgementHandler:
 
 
 # receive packets and writes them into filename
-class Receiver(PyQt5.QtCore.QObject):
-    log_signal = PyQt5.QtCore.pyqtSignal(str, str)
-
-    def __init__(self, folder_name):
-        super().__init__()
+class Receiver:
+    def __init__(self, folder_name, SIGNALS):
+        self.running = False
 
         filename = "SAVEDFILE.jpg"
         filepath = folder_name + SEP + filename
@@ -57,9 +54,18 @@ class Receiver(PyQt5.QtCore.QObject):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(RECEIVER_ADDRESS)
 
+        # [LOG_SIGNAL, FINISH_SIGNAL, STOP_SIGNAL]
+        self.SIGNALS = SIGNALS
+        self.LOG_SIGNAL = self.SIGNALS[0]
+        self.FINISH_SIGNAL = self.SIGNALS[1]
+        self.STOP_SIGNAL = self.SIGNALS[2]
+
+        dispatcher.connect(self.STOP_SIGNAL, self.stop, weak=False)
+
     def start(self):
         self._thread = threading.Thread(target=self.run)
         self._thread.start()
+        self.running = True
 
     def run(self):
         # try open, or create the file for writing
@@ -86,13 +92,18 @@ class Receiver(PyQt5.QtCore.QObject):
 
             if can_write:
                 print(f"writing data from packet {LFR - 1} in the new file")
-                self.log_signal.emit('RCV', f'Packet {LFR - 1} received.')
-                self.log_signal.emit('SNT', f'Acknowledgement {LFR - 1} sent.')
+                dispatcher.send(self.LOG_SIGNAL, logType='RCV', logMessage=f'Packet {LFR - 1} received.')
+                dispatcher.send(self.LOG_SIGNAL, logType='SNT', logMessage=f'Acknowledgement {LFR - 1} sent.')
                 file.write(data)
+        if self.running: # normal receiver execution end
+            # finnish writing --> closing the file
+            file.close()
+            self.socket.close()
+            self.running = False
+            dispatcher.send(self.FINISH_SIGNAL, type='NORMAL')
 
-        # finnish writing --> closing the file
-        file.close()
-        self.socket.close()
+    def stop(self):
+        self.running = False
 
 
 def start_receiver(folderName): #from QT
