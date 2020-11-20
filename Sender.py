@@ -15,6 +15,7 @@ from Components import Logger, \
     Timer, \
     Udp
 
+
 SEP = os.path.sep
 SENDER_ADDRESS = ('localhost', 6663)
 SLEEP_INTERVAL = 0.05
@@ -33,9 +34,10 @@ timer_object = Timer.Timer(TIMEOUT_INTERVAL)  # instance of Timer class
 
 
 class SenderAcknowledgementHandler:
-    def __init__(self, socket, LOG_SIGNAL):
+    def __init__(self, socket, LOG_SIGNAL=None):
         self.socket = socket
         self.LOG_SIGNAL = LOG_SIGNAL
+        self.logger = Logger.Logger(self.LOG_SIGNAL)
 
     def wait_for_ack(self):
         global LAR
@@ -45,25 +47,24 @@ class SenderAcknowledgementHandler:
         # we wait for the sender to send ack for the current LAR
         while True:
             try:
-                packet, _ = Udp.receive(self.socket)
+                packet, _ = Udp.receive(self.socket) #TODO PACK
             except:
                 break
 
-            ack, _ = ReceiverPacketHandler.extract_information(packet)
+            ack, _ = ReceiverPacketHandler.extract_information(packet) #TODO pack
 
             # if we have ACK for the LAR
-            dispatcher.send(self.LOG_SIGNAL, logType='RCV', logMessage=f'Acknowledgement {LAR} received.')
-            print(f'Got ACK for {LAR}')
+            self.logger.log('RCV', f'Acknowledgement {LAR} received.')
             if ack >= LAR:
                 mutex.acquire()
                 LAR = ack + 1
-                print(f"LAR updated; new LAR --> {LAR}")
+                self.logger.log('INF', f'Shifting window to {LAR}.')
                 timer_object.stop()
                 mutex.release()
 
 
 class Sender:
-    def __init__(self, filename, SIGNALS):
+    def __init__(self, filename, SIGNALS=None):
         self.running = False
 
         self.filename = filename
@@ -72,13 +73,20 @@ class Sender:
         self.socket.bind(SENDER_ADDRESS)
         self.filename = filename
 
-        # [LOG_SIGNAL, FINISH_SIGNAL, STOP_SIGNAL]
-        self.SIGNALS = SIGNALS
-        self.LOG_SIGNAL = self.SIGNALS[0]
-        self.FINISH_SIGNAL = self.SIGNALS[1]
-        self.STOP_SIGNAL = self.SIGNALS[2]
+        if SIGNALS is None:
+            self.console_mode = True
+            self.LOG_SIGNAL = None
+        else:
+            self.console_mode = False
+            # [LOG_SIGNAL, FINISH_SIGNAL, STOP_SIGNAL]
+            self.SIGNALS = SIGNALS
+            self.LOG_SIGNAL = self.SIGNALS[0]
+            self.FINISH_SIGNAL = self.SIGNALS[1]
+            self.STOP_SIGNAL = self.SIGNALS[2]
 
-        dispatcher.connect(self.STOP_SIGNAL, self.stop, weak=False)
+            dispatcher.connect(self.STOP_SIGNAL, self.stop, weak=False)
+
+        self.logger = Logger.Logger(self.LOG_SIGNAL)
 
     def start(self):
         self._thread = threading.Thread(target=self.run)
@@ -90,14 +98,18 @@ class Sender:
         global LAR
         global timer_object
 
-        # SenderAcknowledgementHandler object
-        ack_handler = SenderAcknowledgementHandler(self.socket, self.LOG_SIGNAL)
+        self.logger.log('SET', 'Sender has started')
+
+        #TODO handshake
+
+        self.logger.log('INF', 'Handshake successful')
 
         # we try open the file
         try:
             file = open(self.filename, 'rb')
         except IOError:
-            print('Unable to open', self.filename)  # logg
+            self.logger.log('ERR', f'Unable to open {self.filename}')
+            #TODO return
             return
 
         # create packets and add to buffer
@@ -108,16 +120,19 @@ class Sender:
             data = file.read(PACKET_SIZE)
             if not data:
                 break
-            packets.append(SenderPacketHandler.make_packet(packet_number, data))
+            packets.append(SenderPacketHandler.make_packet(packet_number, data)) #TODO pack
             packet_number += 1
 
+        file.close()
+
         number_of_packets = len(packets)
-        print(f"{number_of_packets} packets made")
-        window_size = min(WINDOW_SIZE, number_of_packets)
+        self.logger.log('INF', f'{number_of_packets} were created')
+        window_size = min(WINDOW_SIZE, number_of_packets) #TODO logic
 
         # by LFS we will understand last frame sent
         LFS = 0
 
+        ack_handler = SenderAcknowledgementHandler(self.socket, self.LOG_SIGNAL)
         _thread.start_new_thread(ack_handler.wait_for_ack, ())
 
         # we run until all the packets are sent
@@ -126,49 +141,47 @@ class Sender:
 
             # starting the timer
             if not timer_object.timer_is_running():
-                print(f"starting the timer")
+                # print(f"starting the timer") # TODO REMOVE?
                 timer_object.start()
 
             # send the packets from window
             while LFS < LAR + window_size:
-                print(f"Sending packet: {LFS}")
-                Udp.send(packets[LFS], self.socket, RECEIVER_ADDRESS)
-                dispatcher.send(self.LOG_SIGNAL, logType='SNT', logMessage=f'Packet {LFS} sent.')
+                self.logger.log('SNT', f'Packet {LFS} sent.')
+                Udp.send(packets[LFS], self.socket, RECEIVER_ADDRESS) #TODO pack
                 LFS += 1
 
             # we put this thread to sleep until we have a timeout or we have ack
             while timer_object.timer_is_running() and not timer_object.timeout():
                 mutex.release()
-                print('Sender is sleeping; waiting for ack or timeout')
+                # print('Sender is sleeping; waiting for ack or timeout') # TODO REMOVE?
                 time.sleep(SLEEP_INTERVAL)
                 mutex.acquire()
 
             if timer_object.timeout():
-                print('we timeout out')
+                # print('we timeout out') # TODO REMOVE?
+                self.logger.log('INF', f'Timeout. Resending window.')
                 timer_object.stop()
                 # we send all the packets from window again
                 LFS = LAR
             else:
                 # if we didnt timeout that means we got a correct ack
-                print(f"we got correct ack; shifting window: now LAR is -->  {LAR}")
-                window_size = min(WINDOW_SIZE, number_of_packets - LAR)
+                window_size = min(WINDOW_SIZE, number_of_packets - LAR) #TODO check
             mutex.release()
 
         if self.running: # normal sender execution end
             # send an empty packet for breaking the loop and closing the file
-            print("we sent all the packets; Time to end ")
-            Udp.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
-            file.close()
+            self.logger.log('SET', 'All packets sent. Shutting down.')
+            Udp.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS) #TODO pack
             self.socket.close()
             self.running = False
-            dispatcher.send(self.FINISH_SIGNAL, type='NORMAL')
+            dispatcher.send(self.FINISH_SIGNAL, type='NORMAL') #TODO return
 
     def stop(self):
         self.running = False
 
 
-def start_sender(fileName):
-    sender = Sender(fileName)
+def start_sender(filename):
+    sender = Sender(filename) #TODO console
     sender.start()
 
 
@@ -180,7 +193,6 @@ if __name__ == '__main__':
     # 4. Window size; default 4
     # 5. Timeout interval; default 0.5 sec
 
-    # filename = f"tests{SEP}aa.gif"
-    fileName = f"test{SEP}send{SEP}test.jpg"
+    filename = f"test{SEP}send{SEP}test.jpg"
 
-    start_sender(fileName)
+    start_sender(filename)

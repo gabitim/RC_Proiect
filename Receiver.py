@@ -18,49 +18,57 @@ RECEIVER_ADDRESS = ('localhost', 9998)
 
 
 class ReceiverAcknowledgementHandler:
-    def __init__(self, socket, file):
+    def __init__(self, socket, LOG_SIGNAL=None):
         self.socket = socket
-        self.file = file
+        self.LOG_SIGNAL = LOG_SIGNAL
+        self.logger = Logger.Logger(self.LOG_SIGNAL)
 
     def send_ack(self, address, packet_number, LFR):
         # if we have the right package send the ack to move the window
         if packet_number == LFR:
-            print('Got expected packet')
-            print(f"Send ACK {LFR}")
-            ack_packet = SenderPacketHandler.make_packet(LFR)
-            Udp.send(ack_packet, self.socket, address)
+            self.logger.log('INF', 'Got expected packet')
+            self.logger.log('SNT', f'Acknowledgement {LFR} sent.')
+            ack_packet = SenderPacketHandler.make_packet(LFR) #TODO pack
+            Udp.send(ack_packet, self.socket, address) #TODO pack
 
             LFR += 1
             return LFR, True
         # if we have wrong packet send ack to reset the window
         else:
-            print('Got Wrong Packet')
-            print(f"Sending ack for resetting the window {LFR - 1}")
-            ack_packet = SenderPacketHandler.make_packet(LFR - 1)
-            Udp.send(ack_packet, self.socket, address)
+            self.logger.log('INF', 'Got wrong packet')
+            self.logger.log('SNT', f'Acknowledgement {LFR - 1} sent.')
+            ack_packet = SenderPacketHandler.make_packet(LFR - 1) #TODO pack
+            Udp.send(ack_packet, self.socket, address) #TODO pack
 
             return LFR, False
 
 
 # receive packets and writes them into filename
 class Receiver:
-    def __init__(self, folder_name, SIGNALS):
+    def __init__(self, foldername, SIGNALS=None):
         self.running = False
 
-        filename = "SAVEDFILE.jpg"
-        filepath = folder_name + SEP + filename
-        self.filename = filepath
+        file = "SAVEDFILE.jpg"
+        self.filename = foldername + SEP + file
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(RECEIVER_ADDRESS)
 
-        # [LOG_SIGNAL, FINISH_SIGNAL, STOP_SIGNAL]
-        self.SIGNALS = SIGNALS
-        self.LOG_SIGNAL = self.SIGNALS[0]
-        self.FINISH_SIGNAL = self.SIGNALS[1]
-        self.STOP_SIGNAL = self.SIGNALS[2]
+        if SIGNALS is None:
+            self.console_mode = True
+            self.LOG_SIGNAL = None
+        else:
+            self.console_mode = False
 
-        dispatcher.connect(self.STOP_SIGNAL, self.stop, weak=False)
+            # [LOG_SIGNAL, FINISH_SIGNAL, STOP_SIGNAL]
+            self.SIGNALS = SIGNALS
+            self.LOG_SIGNAL = self.SIGNALS[0]
+            self.FINISH_SIGNAL = self.SIGNALS[1]
+            self.STOP_SIGNAL = self.SIGNALS[2]
+
+            dispatcher.connect(self.STOP_SIGNAL, self.stop, weak=False)
+
+        self.logger = Logger.Logger(self.LOG_SIGNAL)
 
     def start(self):
         self._thread = threading.Thread(target=self.run)
@@ -68,11 +76,18 @@ class Receiver:
         self.running = True
 
     def run(self):
+        self.logger.log('SET', 'Sender has started')
+
+        #TODO handshake
+
+        self.logger.log('INF', 'Handshake successful')
+
         # try open, or create the file for writing
         try:
             file = open(self.filename, 'wb')
         except IOError:
-            print(f"Unable to open or create {self.filename}")
+            self.logger.log('ERR', f'Unable to open {self.filename}')
+            #TODO return
             return
 
         ack_handler = ReceiverAcknowledgementHandler(self.socket, file)
@@ -81,33 +96,32 @@ class Receiver:
         LFR = 0
 
         while True:  # get the next packet from sender
-            packet, address = Udp.receive(self.socket)
+            packet, address = Udp.receive(self.socket) #TODO pack
             if not packet:
-                print("we received all the packets; time to end")
                 break
 
-            packet_number, data = ReceiverPacketHandler.extract_information(packet)
-            print(f"Got packet {packet_number}")
-            LFR, can_write = ack_handler.send_ack(address, packet_number, LFR)
+            packet_number, data = ReceiverPacketHandler.extract_information(packet) #TODO pack
+            self.logger.log('RCV', f'Packet {LFR - 1} received.')
+
+            LFR, can_write = ack_handler.send_ack(address, packet_number, LFR) #TODO pac
 
             if can_write:
-                print(f"writing data from packet {LFR - 1} in the new file")
-                dispatcher.send(self.LOG_SIGNAL, logType='RCV', logMessage=f'Packet {LFR - 1} received.')
-                dispatcher.send(self.LOG_SIGNAL, logType='SNT', logMessage=f'Acknowledgement {LFR - 1} sent.')
                 file.write(data)
+
         if self.running: # normal receiver execution end
             # finnish writing --> closing the file
+            self.logger.log('SET', 'All packets received. Shutting down.')
             file.close()
             self.socket.close()
             self.running = False
-            dispatcher.send(self.FINISH_SIGNAL, type='NORMAL')
+            dispatcher.send(self.FINISH_SIGNAL, type='NORMAL') #TODO return
 
     def stop(self):
         self.running = False
 
 
-def start_receiver(folderName): #from QT
-    receiver = Receiver(folderName)
+def start_receiver(foldername):
+    receiver = Receiver(foldername) #TODO console
     receiver.start()
 
 
@@ -116,5 +130,5 @@ if __name__ == '__main__':
     # 1. filename
 
     # filename = f"tests{SEP}SAVED3.pdf"
-    folderName = f"test"
-    start_receiver(folderName)
+    foldername = f"test"
+    start_receiver(foldername)

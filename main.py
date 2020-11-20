@@ -25,7 +25,8 @@ class MainWindow(QMainWindow):
         'SNT' : '#000000', # SENT (BLACK)
         'RCV' : '#1E90FF', # RECEIVED (LIGHT BLUE)
         'ERR' : '#FF0000', # ERROR (RED)
-        'WRN' : '#994D00' # WARNING (ORANGE)
+        'WRN' : '#994D00', # WARNING (ORANGE)
+        'INF' : '#013220'  # INFORMATIVE (DARK GREEN)
     }
 
     def __init__(self, *args, **kwargs):
@@ -124,18 +125,18 @@ class MainWindow(QMainWindow):
 
     def start_transmission(self):
         if self.client_mode == MainWindow.RECEIVER_MODE:
-            folder_name = self.path_line_edit.text()
-            if folder_name == '':
-                folder_name = 'test'
+            foldername = self.path_line_edit.text()
+            if foldername == '':
+                foldername = 'test'
 
-            self.worker = Receiver(folder_name, self.SIGNALS)
+            self.worker = Receiver(foldername, self.SIGNALS)
 
         if self.client_mode == MainWindow.SENDER_MODE:
-            file_name = self.path_line_edit.text()
+            filename = self.path_line_edit.text()
 
-            parameters = self.extract_parameters()
+            parameters = self.parameters()
 
-            self.worker = Sender(file_name, self.SIGNALS) # , parameters)
+            self.worker = Sender(filename, self.SIGNALS) # , parameters)
 
         dispatcher.connect(self.log, self.LOG_SIGNAL, weak=False)
         dispatcher.connect(self.on_finish, self.FINISH_SIGNAL, weak=False)
@@ -186,8 +187,8 @@ class MainWindow(QMainWindow):
         newValue = self.timeout_slider.value()
         self.timeout_value_label.setText(str(newValue))
 
-    def log(self, logType, logMessage):
-        text = f'<span style="font-size:8pt; font-weight:600; color:{MainWindow.COLOR_DICT[logType]};">{logMessage}</span>'
+    def log(self, log_type, log_message):
+        text = f'<span style="font-size:8pt; font-weight:600; color:{MainWindow.COLOR_DICT[log_type]};">{log_message}</span>'
         self.log_text_edit.append(text)
 
 
