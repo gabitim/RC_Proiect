@@ -1,19 +1,17 @@
 import sys
-import os
+from pydispatch import dispatcher
+
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
 from PyQt5.uic import loadUi
 
 from Front.form import Ui_MainWindow
-
-from pydispatch import dispatcher
-
 from Receiver import Receiver
 from Sender import Sender
 
-SEP = os.path.sep
 
 def create_signal():
     return object()
+
 
 class MainWindow(QMainWindow):
     SENDER_MODE = 0
@@ -187,6 +185,8 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
+    # TODO add if sys.argv > ce trb, launch console app
+
     app = QApplication(sys.argv)
 
     window = MainWindow()
