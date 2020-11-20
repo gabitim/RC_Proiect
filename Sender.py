@@ -173,8 +173,6 @@ def start_sender(fileName):
 
 
 if __name__ == '__main__':
-    # TO BE LINKED WITH UI
-
     # command line params:
     # 1. path to the file to be sent
     # 2. Receiver address; default (localhost, 8080)
