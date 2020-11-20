@@ -37,8 +37,8 @@ class MainWindow(QMainWindow):
         self.clientMode = MainWindow.SENDER_MODE
         self.connectButtons()
         self.connectSliders()
-        self.dialog = QFileDialog(self, 'Open')
-        self.configureDialog()
+        self.finish_dialog = QFileDialog(self, 'Open')
+        self.configureDialogs()
 
         self.worker = None
 
@@ -47,88 +47,88 @@ class MainWindow(QMainWindow):
         self.STOP_SIGNAL = createSignal()
         self.SIGNALS = [self.LOG_SIGNAL, self.FINISH_SIGNAL, self.STOP_SIGNAL]
 
-    def configureDialog(self):
-        self.dialog.setAcceptMode(QFileDialog.AcceptOpen)
+    def configureDialogs(self):
+        self.finish_dialog.setAcceptMode(QFileDialog.AcceptOpen)
 
     def connectButtons(self):
-        self.senderButton.clicked.connect(self.chooseSender)
-        self.receiverButton.clicked.connect(self.chooseReceiver)
-        self.backButton.clicked.connect(self.backToMode)
-        self.startButton.clicked.connect(self.startTransmission)
-        self.stopButton.clicked.connect(self.stopTransmission)
-        self.pathButton.clicked.connect(self.browse)
+        self.sender_button.clicked.connect(self.chooseSender)
+        self.receiver_button.clicked.connect(self.chooseReceiver)
+        self.back_button.clicked.connect(self.backToMode)
+        self.start_button.clicked.connect(self.startTransmission)
+        self.stop_button.clicked.connect(self.stopTransmission)
+        self.path_button.clicked.connect(self.browse)
 
     def chooseSender(self):
         self.clientMode = MainWindow.SENDER_MODE
 
-        self.packetSizeLabel.setEnabled(1)
-        self.packetSizeSlider.setEnabled(1)
-        self.packetSizeValueLabel.setEnabled(1)
-        self.windowSizeLabel.setEnabled(1)
-        self.windowSizeSlider.setEnabled(1)
-        self.windowSizeValueLabel.setEnabled(1)
-        self.packetLossChanceLabel.setEnabled(1)
-        self.packetLossChanceSlider.setEnabled(1)
-        self.packetLossChanceValueLabel.setEnabled(1)
-        self.packetCorruptionChanceLabel.setEnabled(1)
-        self.packetCorruptionChanceSlider.setEnabled(1)
-        self.packetCorruptionChanceValueLabel.setEnabled(1)
-        self.timeoutLabel.setEnabled(1)
-        self.timeoutSlider.setEnabled(1)
-        self.timeoutValueLabel.setEnabled(1)
+        self.packet_size_label.setEnabled(1)
+        self.packet_size_slider.setEnabled(1)
+        self.packet_size_value_label.setEnabled(1)
+        self.window_size_label.setEnabled(1)
+        self.window_size_slider.setEnabled(1)
+        self.window_size_value_label.setEnabled(1)
+        self.packet_loss_chance_label.setEnabled(1)
+        self.packet_loss_chance_slider.setEnabled(1)
+        self.packet_loss_chance_value_label.setEnabled(1)
+        self.packet_corruption_chance_label.setEnabled(1)
+        self.packet_corruption_chance_slider.setEnabled(1)
+        self.packet_corruption_chance_value_label.setEnabled(1)
+        self.timeout_label.setEnabled(1)
+        self.timeout_slider.setEnabled(1)
+        self.timeout_value_label.setEnabled(1)
 
-        self.pathLabel.setText('File name')
-        self.pathButton.setText('Choose file')
+        self.path_label.setText('File name')
+        self.path_button.setText('Choose file')
 
-        self.dialog.setFileMode(QFileDialog.ExistingFile)
+        self.finish_dialog.setFileMode(QFileDialog.ExistingFile)
 
-        self.stackedWidget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
+        self.stacked_widget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
 
     def chooseReceiver(self):
         self.clientMode = MainWindow.RECEIVER_MODE
 
-        self.packetSizeLabel.setEnabled(0)
-        self.packetSizeSlider.setEnabled(0)
-        self.packetSizeValueLabel.setEnabled(0)
-        self.windowSizeLabel.setEnabled(0)
-        self.windowSizeSlider.setEnabled(0)
-        self.windowSizeValueLabel.setEnabled(0)
-        self.packetLossChanceLabel.setEnabled(0)
-        self.packetLossChanceSlider.setEnabled(0)
-        self.packetLossChanceValueLabel.setEnabled(0)
-        self.packetCorruptionChanceLabel.setEnabled(0)
-        self.packetCorruptionChanceSlider.setEnabled(0)
-        self.packetCorruptionChanceValueLabel.setEnabled(0)
-        self.timeoutLabel.setEnabled(0)
-        self.timeoutSlider.setEnabled(0)
-        self.timeoutValueLabel.setEnabled(0)
+        self.packet_size_label.setEnabled(0)
+        self.packet_size_slider.setEnabled(0)
+        self.packet_size_value_label.setEnabled(0)
+        self.window_size_label.setEnabled(0)
+        self.window_size_slider.setEnabled(0)
+        self.window_size_value_label.setEnabled(0)
+        self.packet_loss_chance_label.setEnabled(0)
+        self.packet_loss_chance_slider.setEnabled(0)
+        self.packet_loss_chance_value_label.setEnabled(0)
+        self.packet_corruption_chance_label.setEnabled(0)
+        self.packet_corruption_chance_slider.setEnabled(0)
+        self.packet_corruption_chance_value_label.setEnabled(0)
+        self.timeout_label.setEnabled(0)
+        self.timeout_slider.setEnabled(0)
+        self.timeout_value_label.setEnabled(0)
 
-        self.pathLabel.setText('Folder name')
-        self.pathButton.setText('Choose folder')
+        self.path_label.setText('Folder name')
+        self.path_button.setText('Choose folder')
 
-        self.dialog.setFileMode(QFileDialog.Directory)
+        self.finish_dialog.setFileMode(QFileDialog.Directory)
 
-        self.stackedWidget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
+        self.stacked_widget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
 
     def backToMode(self):
-        self.stackedWidget.setCurrentIndex(MainWindow.MODE_PAGE)
+        self.stacked_widget.setCurrentIndex(MainWindow.MODE_PAGE)
 
     def startTransmission(self):
         if self.clientMode == MainWindow.RECEIVER_MODE:
-            folderName = self.pathLineEdit.text()
+            folderName = self.path_line_edit.text()
             if folderName == '':
                 folderName = 'test'
             self.worker = Receiver(folderName, self.SIGNALS)
 
         if self.clientMode == MainWindow.SENDER_MODE:
-            fileName = self.pathLineEdit.text()
+            fileName = self.path_line_edit.text()
 
             parameters = []
-            parameters += [self.packetSizeSlider.value()]
-            parameters += [self.windowSizeSlider.value()]
-            parameters += [self.packetLossChanceSlider.value()]
-            parameters += [self.packetCorruptionChanceSlider.value()]
-            parameters += [self.timeoutSlider.value()]
+            parameters += [self.packet_size_slider.value()]
+            parameters += [self.window_size_slider.value()]
+            parameters += [self.packet_loss_chance_slider.value()]
+            parameters += [self.packet_corruption_chance_slider.value()]
+            parameters += [self.timeout_slider.value()]
 
             self.worker = Sender(fileName, self.SIGNALS) # , parameters)
 
@@ -136,54 +136,54 @@ class MainWindow(QMainWindow):
         dispatcher.connect(self.onFinish, self.FINISH_SIGNAL, weak=False)
         self.worker.start()
 
-        self.stackedWidget.setCurrentIndex(MainWindow.LOG_PAGE)
+        self.stacked_widget.setCurrentIndex(MainWindow.LOG_PAGE)
 
     def stopTransmission(self):
         dispatcher.send(self.STOP_SIGNAL)
         self.onFinish('KILL')
 
     def connectSliders(self):
-        self.packetSizeSlider.valueChanged.connect(self.onPacketSizeChange)
-        self.windowSizeSlider.valueChanged.connect(self.onWindowSizeChange)
-        self.packetLossChanceSlider.valueChanged.connect(self.onPacketLossChanceChange)
-        self.packetCorruptionChanceSlider.valueChanged.connect(self.onPacketCorruptionChanceChange)
-        self.timeoutSlider.valueChanged.connect(self.onTimeoutChange)
+        self.packet_size_slider.valueChanged.connect(self.onPacketSizeChange)
+        self.window_size_slider.valueChanged.connect(self.onWindowSizeChange)
+        self.packet_loss_chance_slider.valueChanged.connect(self.onPacketLossChanceChange)
+        self.packet_corruption_chance_slider.valueChanged.connect(self.onPacketCorruptionChanceChange)
+        self.timeout_slider.valueChanged.connect(self.onTimeoutChange)
 
     def onFinish(self, type):
         if type.upper() == 'NORMAL':
             # TODO dispay finished dialog
             pass
 
-        self.stackedWidget.setCurrentIndex(MainWindow.MODE_PAGE)
+        self.stacked_widget.setCurrentIndex(MainWindow.MODE_PAGE)
 
     def browse(self):
-        if self.dialog.exec() == QFileDialog.Accepted:
-            path = self.dialog.selectedFiles()[0]
-            self.pathLineEdit.setText(path)
+        if self.finish_dialog.exec() == QFileDialog.Accepted:
+            path = self.finish_dialog.selectedFiles()[0]
+            self.path_line_edit.setText(path)
 
     def onPacketSizeChange(self):
-        newValue = self.packetSizeSlider.value()
-        self.packetSizeValueLabel.setText(str(newValue))
+        newValue = self.packet_size_slider.value()
+        self.packet_size_value_label.setText(str(newValue))
 
     def onWindowSizeChange(self):
-        newValue = self.windowSizeSlider.value()
-        self.windowSizeValueLabel.setText(str(newValue))
+        newValue = self.window_size_slider.value()
+        self.window_size_value_label.setText(str(newValue))
 
     def onPacketLossChanceChange(self):
-        newValue = self.packetLossChanceSlider.value()
-        self.packetLossChanceValueLabel.setText(str(newValue))
+        newValue = self.packet_loss_chance_slider.value()
+        self.packet_loss_chance_value_label.setText(str(newValue))
 
     def onPacketCorruptionChanceChange(self):
-        newValue = self.packetCorruptionChanceSlider.value()
-        self.packetCorruptionChanceValueLabel.setText(str(newValue))
+        newValue = self.packet_corruption_chance_slider.value()
+        self.packet_corruption_chance_value_label.setText(str(newValue))
 
     def onTimeoutChange(self):
-        newValue = self.timeoutSlider.value()
-        self.timeoutValueLabel.setText(str(newValue))
+        newValue = self.timeout_slider.value()
+        self.timeout_value_label.setText(str(newValue))
 
     def log(self, logType, logMessage):
         text = f'<span style="font-size:8pt; font-weight:600; color:{MainWindow.COLOR_DICT[logType]};">{logMessage}</span>'
-        self.logTextEdit.append(text)
+        self.log_text_edit.append(text)
 
 
 if __name__ == "__main__":
