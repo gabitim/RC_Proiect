@@ -111,6 +111,15 @@ class MainWindow(QMainWindow):
     def back_to_mode(self):
         self.stacked_widget.setCurrentIndex(MainWindow.MODE_PAGE)
 
+    def parameters(self):
+        parameters = []
+        parameters += [self.packet_size_slider.value()]
+        parameters += [self.window_size_slider.value()]
+        parameters += [self.packet_loss_chance_slider.value()]
+        parameters += [self.packet_corruption_chance_slider.value()]
+        parameters += [self.timeout_slider.value()]
+        return parameters
+
     def start_transmission(self):
         if self.client_mode == MainWindow.RECEIVER_MODE:
             folder_name = self.path_line_edit.text()
@@ -121,12 +130,7 @@ class MainWindow(QMainWindow):
         if self.client_mode == MainWindow.SENDER_MODE:
             file_name = self.path_line_edit.text()
 
-            parameters = []
-            parameters += [self.packet_size_slider.value()]
-            parameters += [self.window_size_slider.value()]
-            parameters += [self.packet_loss_chance_slider.value()]
-            parameters += [self.packet_corruption_chance_slider.value()]
-            parameters += [self.timeout_slider.value()]
+            parameters = self.extract_parameters()
 
             self.worker = Sender(file_name, self.SIGNALS) # , parameters)
 
