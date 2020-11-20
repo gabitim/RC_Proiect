@@ -1,6 +1,6 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
 from PyQt5.uic import loadUi
 
 from Front.form import Ui_MainWindow
@@ -32,8 +32,13 @@ class MainWindow(QMainWindow):
         self.clientMode = MainWindow.SENDER_MODE
         self.connectButtons()
         self.connectSliders()
+        self.dialog = QFileDialog(self, 'Open')
+        self.configureDialog()
 
         self.worker = None
+
+    def configureDialog(self):
+        self.dialog.setAcceptMode(QFileDialog.AcceptOpen)
 
     def connectButtons(self):
         self.senderButton.clicked.connect(self.chooseSender)
@@ -41,6 +46,7 @@ class MainWindow(QMainWindow):
         self.backButton.clicked.connect(self.backToMode)
         self.startButton.clicked.connect(self.startTransmission)
         self.stopButton.clicked.connect(self.stopTransmission)
+        self.pathButton.clicked.connect(self.browse)
 
     def chooseSender(self):
         self.clientMode = MainWindow.SENDER_MODE
@@ -60,6 +66,11 @@ class MainWindow(QMainWindow):
         self.timeoutLabel.setEnabled(1)
         self.timeoutSlider.setEnabled(1)
         self.timeoutValueLabel.setEnabled(1)
+
+        self.pathLabel.setText('File name')
+        self.pathButton.setText('Choose file')
+
+        self.dialog.setFileMode(QFileDialog.ExistingFile)
 
         self.stackedWidget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
 
@@ -82,19 +93,25 @@ class MainWindow(QMainWindow):
         self.timeoutSlider.setEnabled(0)
         self.timeoutValueLabel.setEnabled(0)
 
+        self.pathLabel.setText('Folder name')
+        self.pathButton.setText('Choose folder')
+
+        self.dialog.setFileMode(QFileDialog.Directory)
+
         self.stackedWidget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
 
     def backToMode(self):
         self.stackedWidget.setCurrentIndex(MainWindow.MODE_PAGE)
 
     def startTransmission(self):
-        # start transmission thread
         if self.clientMode == MainWindow.RECEIVER_MODE:
             folderName = f"test{SEP}receive"
+            folderName = self.pathLineEdit.text()
             self.worker = Receiver(folderName)
 
         if self.clientMode == MainWindow.SENDER_MODE:
             fileName = f"test{SEP}send{SEP}test.jpg"
+            fileName = self.pathLineEdit.text()
             self.worker = Sender(fileName)
 
         self.worker.log_signal.connect(self.log)
@@ -114,6 +131,11 @@ class MainWindow(QMainWindow):
         self.packetLossChanceSlider.valueChanged.connect(self.onPacketLossChanceChange)
         self.packetCorruptionChanceSlider.valueChanged.connect(self.onPacketCorruptionChanceChange)
         self.timeoutSlider.valueChanged.connect(self.onTimeoutChange)
+
+    def browse(self):
+        if self.dialog.exec() == QFileDialog.Accepted:
+            path = self.dialog.selectedFiles()[0]
+            self.pathLineEdit.setText(path)
 
     def onPacketSizeChange(self):
         newValue = self.packetSizeSlider.value()
