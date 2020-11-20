@@ -37,9 +37,11 @@ class MainWindow(QMainWindow):
         self.connect_sliders()
         self.finish_dialog = QFileDialog(self, 'Open')
         self.configure_dialogs()
+        self.init_signals()
 
         self.worker = None
 
+    def init_signals(self):
         self.LOG_SIGNAL = create_signal()
         self.FINISH_SIGNAL = create_signal()
         self.STOP_SIGNAL = create_signal()
@@ -125,6 +127,7 @@ class MainWindow(QMainWindow):
             folder_name = self.path_line_edit.text()
             if folder_name == '':
                 folder_name = 'test'
+
             self.worker = Receiver(folder_name, self.SIGNALS)
 
         if self.client_mode == MainWindow.SENDER_MODE:
