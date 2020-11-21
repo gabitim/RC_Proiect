@@ -3,6 +3,7 @@ from pydispatch import dispatcher
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
 from PyQt5.uic import loadUi
+from PyQt5.QtCore import pyqtSignal
 
 from Front.form import Ui_MainWindow
 from Receiver import Receiver
@@ -28,6 +29,9 @@ class MainWindow(QMainWindow):
         'WRN' : '#994D00', # WARNING (ORANGE)
         'INF' : '#013220'  # INFORMATIVE (DARK GREEN)
     }
+
+    log_signal = pyqtSignal(str, str)
+    on_finish_signal = pyqtSignal(str)
 
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
@@ -138,8 +142,10 @@ class MainWindow(QMainWindow):
 
             self.worker = Sender(filename, self.SIGNALS) # , parameters)
 
-        dispatcher.connect(self.log, self.LOG_SIGNAL, weak=False)
-        dispatcher.connect(self.on_finish, self.FINISH_SIGNAL, weak=False)
+        self.log_signal.connect(self.log)
+        self.on_finish_signal.connect(self.on_finish)
+        dispatcher.connect(self.trigger_log_signal, self.LOG_SIGNAL, weak=False)
+        dispatcher.connect(self.trigger_on_finish_signal, self.FINISH_SIGNAL, weak=False)
         self.worker.start()
 
         self.stacked_widget.setCurrentIndex(MainWindow.LOG_PAGE)
@@ -154,6 +160,9 @@ class MainWindow(QMainWindow):
         self.packet_loss_chance_slider.valueChanged.connect(self.on_packet_loss_chance_change)
         self.packet_corruption_chance_slider.valueChanged.connect(self.on_packet_corruption_chance_change)
         self.timeout_slider.valueChanged.connect(self.on_timeout_change)
+
+    def trigger_on_finish_signal(self, type):
+        self.on_finish_signal.emit(type)
 
     def on_finish(self, type):
         if type.upper() == 'NORMAL':
@@ -186,6 +195,9 @@ class MainWindow(QMainWindow):
     def on_timeout_change(self):
         newValue = self.timeout_slider.value()
         self.timeout_value_label.setText(str(newValue))
+
+    def trigger_log_signal(self, log_type, log_message):
+        self.log_signal.emit(log_type, log_message)
 
     def log(self, log_type, log_message):
         text = f'<span style="font-size:8pt; font-weight:600; color:{MainWindow.COLOR_DICT[log_type]};">{log_message}</span>'
