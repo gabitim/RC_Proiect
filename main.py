@@ -8,6 +8,7 @@ from PyQt5.QtCore import pyqtSignal
 from Front.form import Ui_MainWindow
 from Receiver import Receiver
 from Sender import Sender
+from Components.Logger import 
 
 
 def create_signal():
