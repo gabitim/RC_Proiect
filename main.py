@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
         LogTypes.ERR : '#FF0000', # RED
         LogTypes.WRN : '#994D00', # ORANGE
         LogTypes.INF : '#013220', # DARK GREEN
-        LogTypes.WSH : '#871F78'  # DARK PURPLE
+        LogTypes.OTH : '#871F78'  # DARK PURPLE
     }
 
     log_signal = pyqtSignal(LogTypes, str)

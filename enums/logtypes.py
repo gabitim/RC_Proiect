@@ -8,4 +8,4 @@ class LogTypes(Enum):
     ERR = 4 # ERROR
     WRN = 5 # WARNING
     INF = 6 # INFORMATIVE
-    WSH = 7 # WINDOW SHIFT
+    OTH = 7 # OTHER

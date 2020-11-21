@@ -25,24 +25,24 @@ class ReceiverAcknowledgementHandler:
         self.LOG_SIGNAL = LOG_SIGNAL
         self.logger = Logger.Logger(self.LOG_SIGNAL)
 
-    def send_ack(self, address, packet_number, LFR):
+    def send_ack(self, address, packet_number, last_frame_received):
         # if we have the right package send the ack to move the window
-        if packet_number == LFR:
-            self.logger.log(LogTypes.INF, 'Got expected packet')
-            self.logger.log(LogTypes.SNT, f'Acknowledgement {LFR} sent.')
-            ack_packet = SenderPacketHandler.make_packet(LFR) #TODO pack
-            Udp.send(ack_packet, self.socket, address) #TODO pack
+        if packet_number == last_frame_received + 1:
+            last_frame_received += 1
+            self.logger.log(LogTypes.OTH, 'Got expected packet')
+            self.logger.log(LogTypes.SNT, f'Acknowledgement {last_frame_received} sent.')
+            ack_packet = SenderPacketHandler.make_packet(last_frame_received)
+            Udp.send(ack_packet, self.socket, address)
 
-            LFR += 1
-            return LFR, True
+            return last_frame_received, True
         # if we have wrong packet send ack to reset the window
         else:
-            self.logger.log(LogTypes.INF, 'Got wrong packet')
-            self.logger.log(LogTypes.SNT, f'Acknowledgement {LFR - 1} sent.')
-            ack_packet = SenderPacketHandler.make_packet(LFR - 1) #TODO pack
-            Udp.send(ack_packet, self.socket, address) #TODO pack
+            self.logger.log(LogTypes.OTH, 'Got wrong packet')
+            self.logger.log(LogTypes.SNT, f'Acknowledgement {last_frame_received} sent.')
+            ack_packet = SenderPacketHandler.make_packet(last_frame_received)
+            Udp.send(ack_packet, self.socket, address)
 
-            return LFR, False
+            return last_frame_received, False
 
 
 # receive packets and writes them into filename
@@ -92,20 +92,19 @@ class Receiver:
             #TODO return
             return
 
-        ack_handler = ReceiverAcknowledgementHandler(self.socket, file)
+        ack_handler = ReceiverAcknowledgementHandler(self.socket, self.LOG_SIGNAL)
 
-        # by LFR we will understand last accepted frame received
-        LFR = 0
+        last_frame_received = -1
 
         while True:  # get the next packet from sender
-            packet, address = Udp.receive(self.socket) #TODO pack
+            packet, address = Udp.receive(self.socket)
             if not packet:
                 break
 
-            packet_number, data = ReceiverPacketHandler.extract_information(packet) #TODO pack
-            self.logger.log(LogTypes.RCV, f'Packet {LFR - 1} received.')
+            packet_number, data = ReceiverPacketHandler.extract_information(packet)
+            self.logger.log(LogTypes.RCV, f'Packet {packet_number} received.')
 
-            LFR, can_write = ack_handler.send_ack(address, packet_number, LFR) #TODO pac
+            last_frame_received, can_write = ack_handler.send_ack(address, packet_number, last_frame_received)
 
             if can_write:
                 file.write(data)
