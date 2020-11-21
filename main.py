@@ -86,6 +86,7 @@ class MainWindow(QMainWindow):
         self.timeout_value_label.setEnabled(1)
 
         self.path_label.setText('File name')
+        self.path_line_edit.setText('')
         self.path_button.setText('Choose file')
 
         self.finish_dialog.setFileMode(QFileDialog.ExistingFile)
@@ -112,6 +113,7 @@ class MainWindow(QMainWindow):
         self.timeout_value_label.setEnabled(0)
 
         self.path_label.setText('Folder name')
+        self.path_line_edit.setText('')
         self.path_button.setText('Choose folder')
 
         self.finish_dialog.setFileMode(QFileDialog.Directory)
