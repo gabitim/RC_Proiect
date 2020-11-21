@@ -157,7 +157,7 @@ class MainWindow(QMainWindow):
 
     def stop_transmission(self):
         dispatcher.send(self.STOP_SIGNAL)
-        self.on_finish('KILL')
+        self.on_finish(FinishTypes.FORCED)
 
     def connect_sliders(self):
         self.packet_size_slider.valueChanged.connect(self.on_packet_size_change)
