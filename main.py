@@ -131,7 +131,7 @@ class MainWindow(QMainWindow):
         if self.client_mode == MainWindow.RECEIVER_MODE:
             foldername = self.path_line_edit.text()
             if foldername == '':
-                foldername = 'test'
+                foldername = '.'
 
             self.worker = Receiver(foldername, self.SIGNALS)
 
