@@ -96,7 +96,7 @@ class Receiver:
 
         last_frame_received = -1
 
-        while True:  # get the next packet from sender
+        while self.running:  # get the next packet from sender
             packet, address = Udp.receive(self.socket)
             if not packet:
                 break
