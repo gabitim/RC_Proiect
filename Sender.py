@@ -17,6 +17,7 @@ from Components import Logger, \
     Timer, \
     Udp
 
+ERROR_NUMBER = -1000
 
 SEP = os.path.sep
 SENDER_ADDRESS = ('localhost', 6663)
@@ -36,8 +37,9 @@ timer_object = Timer.Timer(TIMEOUT_INTERVAL)  # instance of Timer class
 
 
 class SenderAcknowledgementHandler:
-    def __init__(self, socket, LOG_SIGNAL=None):
+    def __init__(self, socket, number_of_packets, LOG_SIGNAL=None):
         self.socket = socket
+        self.number_of_packets = number_of_packets
         self.LOG_SIGNAL = LOG_SIGNAL
         self.logger = Logger.Logger(self.LOG_SIGNAL)
 
@@ -55,6 +57,14 @@ class SenderAcknowledgementHandler:
 
             ack, _ = ReceiverPacketHandler.extract_information(packet)
 
+            if ack == ERROR_NUMBER:
+                mutex.acquire()
+                # Arbitrary value to signal receiver error
+                last_ack_received = self.number_of_packets * 2
+                timer_object.stop()
+                mutex.release()
+                return
+
             # if we have ACK for the LAR
             self.logger.log(LogTypes.RCV, f'Acknowledgement {ack} received.')
             if ack > last_ack_received:
@@ -65,9 +75,10 @@ class SenderAcknowledgementHandler:
                 mutex.release()
 
 
-class Sender:
+class Sender(threading.Thread):
     def __init__(self, filename, SIGNALS=None):
-        self.running = False
+        super().__init__()
+        self.running = True
 
         self.filename = filename
 
@@ -80,20 +91,12 @@ class Sender:
             self.LOG_SIGNAL = None
         else:
             self.console_mode = False
-            # [LOG_SIGNAL, FINISH_SIGNAL, STOP_SIGNAL]
+            # [LOG_SIGNAL, FINISH_SIGNAL]
             self.SIGNALS = SIGNALS
             self.LOG_SIGNAL = self.SIGNALS[0]
             self.FINISH_SIGNAL = self.SIGNALS[1]
-            self.STOP_SIGNAL = self.SIGNALS[2]
-
-            dispatcher.connect(self.STOP_SIGNAL, self.stop, weak=False)
 
         self.logger = Logger.Logger(self.LOG_SIGNAL)
-
-    def start(self):
-        self._thread = threading.Thread(target=self.run)
-        self._thread.start()
-        self.running = True
 
     def run(self):
         global mutex
@@ -111,7 +114,9 @@ class Sender:
             file = open(self.filename, 'rb')
         except IOError:
             self.logger.log(LogTypes.ERR, f'Unable to open {self.filename}')
-            #TODO return
+            Udp.send(SenderPacketHandler.make_packet(-1000, 'Sender Error'), self.socket, RECEIVER_ADDRESS)
+            self.socket.close()
+            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
             return
 
         # create packets and add to buffer
@@ -133,7 +138,7 @@ class Sender:
 
         last_frame_sent = -1
 
-        ack_handler = SenderAcknowledgementHandler(self.socket, self.LOG_SIGNAL)
+        ack_handler = SenderAcknowledgementHandler(self.socket, number_of_packets, self.LOG_SIGNAL)
         _thread.start_new_thread(ack_handler.wait_for_ack, ())
 
         # we run until all the packets are delivered
@@ -169,15 +174,24 @@ class Sender:
                 window_size = min(WINDOW_SIZE, number_of_packets - last_ack_received - 1)
             mutex.release()
 
+        if last_ack_received > number_of_packets:
+            self.logger.log(LogTypes.ERR, 'Receiver Error')
+            self.socket.close()
+            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
+            return
+
         if self.running: # normal sender execution end
             # send an empty packet for breaking the loop and closing the file
             self.logger.log(LogTypes.SET, 'All packets sent. Shutting down.')
             Udp.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
             self.socket.close()
-            self.running = False
-            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL) #TODO return
+            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
+        else:
+            Udp.send(SenderPacketHandler.make_packet(ERROR_NUMBER), self.socket, RECEIVER_ADDRESS)
+            self.socket.close()
 
-    def stop(self):
+
+    def terminate(self):
         self.running = False
 
 

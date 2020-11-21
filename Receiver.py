@@ -15,6 +15,8 @@ from Components import Logger, \
     SenderPacketHandler, \
     Udp
 
+ERROR_NUMBER = -1000
+
 # parameter from QT ; default value below
 RECEIVER_ADDRESS = ('localhost', 9998)
 
@@ -46,9 +48,11 @@ class ReceiverAcknowledgementHandler:
 
 
 # receive packets and writes them into filename
-class Receiver:
+class Receiver(threading.Thread):
     def __init__(self, foldername, SIGNALS=None):
-        self.running = False
+        super().__init__()
+        self.running = True
+        self.sender_address = None
 
         file = "SAVEDFILE.jpg"
         self.filename = foldername + SEP + file
@@ -66,19 +70,11 @@ class Receiver:
             self.SIGNALS = SIGNALS
             self.LOG_SIGNAL = self.SIGNALS[0]
             self.FINISH_SIGNAL = self.SIGNALS[1]
-            self.STOP_SIGNAL = self.SIGNALS[2]
-
-            dispatcher.connect(self.STOP_SIGNAL, self.stop, weak=False)
 
         self.logger = Logger.Logger(self.LOG_SIGNAL)
 
-    def start(self):
-        self._thread = threading.Thread(target=self.run)
-        self._thread.start()
-        self.running = True
-
     def run(self):
-        self.logger.log(LogTypes.SET, 'Sender has started')
+        self.logger.log(LogTypes.SET, 'Receiver has started')
 
         #TODO handshake
 
@@ -101,7 +97,15 @@ class Receiver:
             if not packet:
                 break
 
+            self.sender_address = address
             packet_number, data = ReceiverPacketHandler.extract_information(packet)
+
+            if packet_number == ERROR_NUMBER:
+                self.logger.log(LogTypes.ERR, 'Sender Error')
+                self.socket.close()
+                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
+                return
+
             self.logger.log(LogTypes.RCV, f'Packet {packet_number} received.')
 
             last_frame_received, can_write = ack_handler.send_ack(address, packet_number, last_frame_received)
@@ -114,10 +118,13 @@ class Receiver:
             self.logger.log(LogTypes.SET, 'All packets received. Shutting down.')
             file.close()
             self.socket.close()
-            self.running = False
             dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL) #TODO return
+        else:
+            if self.sender_address is not None:
+                Udp.send(SenderPacketHandler.make_packet(ERROR_NUMBER), self.socket, self.sender_address)
+            self.socket.close()
 
-    def stop(self):
+    def terminate(self):
         self.running = False
 
 

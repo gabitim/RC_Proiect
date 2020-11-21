@@ -1,7 +1,7 @@
 import sys
 from pydispatch import dispatcher
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QDialog, QDialogButtonBox, QHBoxLayout
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import pyqtSignal
 
@@ -44,6 +44,7 @@ class MainWindow(QMainWindow):
         self.connect_buttons()
         self.connect_sliders()
         self.path_dialog = QFileDialog(self, 'Open')
+        self.finish_dialog = QDialog(self)
         self.configure_dialogs()
         self.init_signals()
 
@@ -52,11 +53,19 @@ class MainWindow(QMainWindow):
     def init_signals(self):
         self.LOG_SIGNAL = create_signal()
         self.FINISH_SIGNAL = create_signal()
-        self.STOP_SIGNAL = create_signal()
-        self.SIGNALS = [self.LOG_SIGNAL, self.FINISH_SIGNAL, self.STOP_SIGNAL]
+        self.SIGNALS = [self.LOG_SIGNAL, self.FINISH_SIGNAL]
 
     def configure_dialogs(self):
         self.path_dialog.setAcceptMode(QFileDialog.AcceptOpen)
+
+        self.finish_dialog.resize(150, 100)
+        button_box = QDialogButtonBox(self.finish_dialog)
+        horizontal_layout = QHBoxLayout(self.finish_dialog)
+        button_box.setStandardButtons(QDialogButtonBox.Ok)
+        button_box.setObjectName("button_box")
+        horizontal_layout.addWidget(button_box)
+        button_box.accepted.connect(self.finish_dialog.accept)
+
 
     def connect_buttons(self):
         self.sender_button.clicked.connect(self.choose_sender)
@@ -156,7 +165,7 @@ class MainWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(MainWindow.LOG_PAGE)
 
     def stop_transmission(self):
-        dispatcher.send(self.STOP_SIGNAL)
+        self.worker.terminate()
         self.on_finish(FinishTypes.FORCED)
 
     def connect_sliders(self):
@@ -169,14 +178,15 @@ class MainWindow(QMainWindow):
     def trigger_on_finish_signal(self, type):
         self.on_finish_signal.emit(type)
 
-    def on_finish(self, type):
+    def on_finish(self, type, error=''):
         if type == FinishTypes.NORMAL:
-            # TODO display finished dialog
-            pass
+            self.finish_dialog.setWindowTitle('Finished')
+        elif type == FinishTypes.ERROR:
+            self.finish_dialog.setWindowTitle('Error')
+        elif type == FinishTypes.FORCED:
+            self.finish_dialog.setWindowTitle('Stopped')
 
-        if type == FinishTypes.ERROR:
-            # TODO display err dialog
-            pass
+        self.finish_dialog.exec()
 
         self.stacked_widget.setCurrentIndex(MainWindow.MODE_PAGE)
 
