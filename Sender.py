@@ -81,6 +81,7 @@ class SenderAcknowledgementHandler:
 class Sender(threading.Thread):
     HANDSHAKE_SIZE = 16 + 8 + 8 + 256
 
+    # parameters order: PACKET_SIZE, WINDOW_SIZE, LOSS_CHANCE, CORRUPTION_CHANCE, TIMEOUT
     def __init__(self, filename, parameters, SIGNALS=None):
         super().__init__()
         self.running = True
@@ -134,7 +135,8 @@ class Sender(threading.Thread):
             corruption_chance_bytes != data[24:32] or filename_bytes != data[32:]:
             self.logger.log(LogTypes.ERR, f'Handshake failed')
             self.socket.close()
-            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
+            if not self.console_mode:
+                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
             return
 
         self.logger.log(LogTypes.INF, 'Handshake successful')
@@ -146,7 +148,8 @@ class Sender(threading.Thread):
             self.logger.log(LogTypes.ERR, f'Unable to open {self.filename}')
             udp_sender.send(SenderPacketHandler.make_packet(-1000, 'Sender Error'), self.socket, RECEIVER_ADDRESS)
             self.socket.close()
-            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
+            if not self.console_mode:
+                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
             return
 
         # create packets and add to buffer
@@ -207,7 +210,8 @@ class Sender(threading.Thread):
         if last_ack_received > number_of_packets:
             self.logger.log(LogTypes.ERR, 'Receiver Error')
             self.socket.close()
-            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
+            if not self.console_mode:
+                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
             return
 
         if self.running: # normal sender execution end
@@ -215,7 +219,8 @@ class Sender(threading.Thread):
             self.logger.log(LogTypes.SET, 'All packets sent. Shutting down.')
             udp_sender.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
             self.socket.close()
-            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
+            if not self.console_mode:
+                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
         else:
             udp_sender.send(SenderPacketHandler.make_packet(ERROR_NUMBER), self.socket, RECEIVER_ADDRESS)
             self.socket.close()
@@ -225,19 +230,20 @@ class Sender(threading.Thread):
         self.running = False
 
 
-def start_sender(filename):
-    sender = Sender(filename) #TODO console
-    sender.start()
+def run_sender(filename, parameters):
+    sender = Sender(filename, parameters) #TODO console
+    sender.run()
 
 
 if __name__ == '__main__':
-    # command line params:
-    # 1. path to the file to be sent
-    # 2. Receiver address; default (localhost, 8080)
-    # 3. Packet size; default 1024 bytes
-    # 4. Window size; default 4
-    # 5. Timeout interval; default 0.5 sec
-
+    # this is to be used for testing purpose only
+    # examples of default parameters
     filename = f"test{SEP}send{SEP}test.jpg"
+    PACKET_SIZE = 4096
+    WINDOW_SIZE = 32
+    LOSS_CHANCE = 5
+    CORRUPTION_CHANCE = 1
+    TIMEOUT = 0.5
+    parameters = [PACKET_SIZE, WINDOW_SIZE, LOSS_CHANCE, CORRUPTION_CHANCE, TIMEOUT]
 
-    start_sender(filename)
+    run_sender(filename, parameters)

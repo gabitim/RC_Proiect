@@ -79,8 +79,6 @@ class Receiver(threading.Thread):
     def run(self):
         self.logger.log(LogTypes.SET, 'Receiver has started')
 
-        packet = None
-
         data, address = Udp.receive(self.socket, Receiver.HANDSHAKE_SIZE)
         self.sender_address = address
 
@@ -102,7 +100,8 @@ class Receiver(threading.Thread):
             self.logger.log(LogTypes.ERR, f'Unable to open {self.filename}')
             udp_sender.send(SenderPacketHandler.make_packet(-1000, 'Sender Error'), self.socket, RECEIVER_ADDRESS)
             self.socket.close()
-            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
+            if not self.console_mode:
+                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
             return
 
         ack_handler = ReceiverAcknowledgementHandler(self.socket, self.LOG_SIGNAL)
@@ -119,7 +118,8 @@ class Receiver(threading.Thread):
             if packet_number == ERROR_NUMBER:
                 self.logger.log(LogTypes.ERR, 'Sender Error')
                 self.socket.close()
-                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
+                if not self.console_mode:
+                    dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
                 return
 
             if random.randint(0, 100) <= self.CORRUPTION_CHANCE:
@@ -135,7 +135,8 @@ class Receiver(threading.Thread):
             self.logger.log(LogTypes.SET, 'All packets received. Shutting down.')
             file.close()
             self.socket.close()
-            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL) #TODO return
+            if not self.console_mode:
+                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
         else:
             if self.sender_address is not None:
                 udp_sender.send(SenderPacketHandler.make_packet(ERROR_NUMBER), self.socket, self.sender_address)
@@ -145,15 +146,14 @@ class Receiver(threading.Thread):
         self.running = False
 
 
-def start_receiver(foldername):
-    receiver = Receiver(foldername) #TODO console
-    receiver.start()
+def run_receiver(foldername):
+    receiver = Receiver(foldername)
+    receiver.run()
 
 
 if __name__ == '__main__':
-    # command line params:
-    # 1. filename
-
-    # filename = f"tests{SEP}SAVED3.pdf"
+    # this is to be used for testing purpose only
+    # examples of default parameters
     foldername = f"test"
-    start_receiver(foldername)
+
+    run_receiver(foldername)
