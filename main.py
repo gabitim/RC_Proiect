@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
         self.client_mode = MainWindow.SENDER_MODE
         self.connect_buttons()
         self.connect_sliders()
-        self.finish_dialog = QFileDialog(self, 'Open')
+        self.path_dialog = QFileDialog(self, 'Open')
         self.configure_dialogs()
         self.init_signals()
 
@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
         self.SIGNALS = [self.LOG_SIGNAL, self.FINISH_SIGNAL, self.STOP_SIGNAL]
 
     def configure_dialogs(self):
-        self.finish_dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        self.path_dialog.setAcceptMode(QFileDialog.AcceptOpen)
 
     def connect_buttons(self):
         self.sender_button.clicked.connect(self.choose_sender)
@@ -89,7 +89,7 @@ class MainWindow(QMainWindow):
         self.path_line_edit.setText('')
         self.path_button.setText('Choose file')
 
-        self.finish_dialog.setFileMode(QFileDialog.ExistingFile)
+        self.path_dialog.setFileMode(QFileDialog.ExistingFile)
 
         self.stacked_widget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
 
@@ -116,7 +116,7 @@ class MainWindow(QMainWindow):
         self.path_line_edit.setText('')
         self.path_button.setText('Choose folder')
 
-        self.finish_dialog.setFileMode(QFileDialog.Directory)
+        self.path_dialog.setFileMode(QFileDialog.Directory)
 
         self.stacked_widget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
 
@@ -171,14 +171,18 @@ class MainWindow(QMainWindow):
 
     def on_finish(self, type):
         if type == FinishTypes.NORMAL:
-            # TODO dispay finished dialog
+            # TODO display finished dialog
+            pass
+
+        if type == FinishTypes.ERROR:
+            # TODO display err dialog
             pass
 
         self.stacked_widget.setCurrentIndex(MainWindow.MODE_PAGE)
 
     def browse(self):
-        if self.finish_dialog.exec() == QFileDialog.Accepted:
-            path = self.finish_dialog.selectedFiles()[0]
+        if self.path_dialog.exec() == QFileDialog.Accepted:
+            path = self.path_dialog.selectedFiles()[0]
             self.path_line_edit.setText(path)
 
     def on_packet_size_change(self):
