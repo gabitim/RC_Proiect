@@ -166,6 +166,7 @@ class MainWindow(QMainWindow):
 
     def stop_transmission(self):
         self.worker.terminate()
+        self.worker.join()
         self.on_finish(FinishTypes.FORCED)
 
     def connect_sliders(self):
