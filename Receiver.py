@@ -4,6 +4,7 @@ import socket
 import sys
 import os
 import threading
+import random
 from pydispatch import dispatcher
 from enums.finishtypes import FinishTypes
 from enums.logtypes import LogTypes
@@ -28,14 +29,14 @@ class ReceiverAcknowledgementHandler:
         self.LOG_SIGNAL = LOG_SIGNAL
         self.logger = Logger.Logger(self.LOG_SIGNAL)
 
-    def send_ack(self, address, packet_number, last_frame_received):
+    def send_ack(self, udp_sender, address, packet_number, last_frame_received):
         # if we have the right package send the ack to move the window
         if packet_number == last_frame_received + 1:
             last_frame_received += 1
             self.logger.log(LogTypes.OTH, 'Got expected packet')
             self.logger.log(LogTypes.SNT, f'Acknowledgement {last_frame_received} sent.')
             ack_packet = SenderPacketHandler.make_packet(last_frame_received)
-            Udp.send(ack_packet, self.socket, address)
+            udp_sender.send(ack_packet, self.socket, address)
 
             return last_frame_received, True
         # if we have wrong packet send ack to reset the window
@@ -43,20 +44,21 @@ class ReceiverAcknowledgementHandler:
             self.logger.log(LogTypes.OTH, 'Got wrong packet')
             self.logger.log(LogTypes.SNT, f'Acknowledgement {last_frame_received} sent.')
             ack_packet = SenderPacketHandler.make_packet(last_frame_received)
-            Udp.send(ack_packet, self.socket, address)
+            udp_sender.send(ack_packet, self.socket, address)
 
             return last_frame_received, False
 
 
 # receive packets and writes them into filename
 class Receiver(threading.Thread):
+    HANDSHAKE_SIZE = 16 + 8 + 8 + 256
+
     def __init__(self, foldername, SIGNALS=None):
         super().__init__()
         self.running = True
         self.sender_address = None
 
-        file = "SAVEDFILE.jpg"
-        self.filename = foldername + SEP + file
+        self.filename = foldername + SEP
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(RECEIVER_ADDRESS)
@@ -77,7 +79,19 @@ class Receiver(threading.Thread):
     def run(self):
         self.logger.log(LogTypes.SET, 'Receiver has started')
 
-        #TODO handshake
+        packet = None
+
+        data, address = Udp.receive(self.socket, Receiver.HANDSHAKE_SIZE)
+        self.sender_address = address
+
+        self.PACKET_SIZE = int.from_bytes(data[0:16], byteorder='little', signed=True)
+        self.LOSS_CHANCE = int.from_bytes(data[16:24], byteorder='little', signed=True)
+        self.CORRUPTION_CHANCE = int.from_bytes(data[24:32], byteorder='little', signed=True)
+        self.filename += data[32:].decode("utf-8")
+
+        self.socket.sendto(data, self.sender_address)
+
+        udp_sender = Udp.UdpSender(self.LOSS_CHANCE, self.LOG_SIGNAL)
 
         self.logger.log(LogTypes.INF, 'Handshake successful')
 
@@ -86,7 +100,9 @@ class Receiver(threading.Thread):
             file = open(self.filename, 'wb')
         except IOError:
             self.logger.log(LogTypes.ERR, f'Unable to open {self.filename}')
-            #TODO return
+            udp_sender.send(SenderPacketHandler.make_packet(-1000, 'Sender Error'), self.socket, RECEIVER_ADDRESS)
+            self.socket.close()
+            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
             return
 
         ack_handler = ReceiverAcknowledgementHandler(self.socket, self.LOG_SIGNAL)
@@ -94,11 +110,10 @@ class Receiver(threading.Thread):
         last_frame_received = -1
 
         while self.running:  # get the next packet from sender
-            packet, address = Udp.receive(self.socket)
+            packet, address = Udp.receive(self.socket, self.PACKET_SIZE)
             if not packet:
                 break
 
-            self.sender_address = address
             packet_number, data = ReceiverPacketHandler.extract_information(packet)
 
             if packet_number == ERROR_NUMBER:
@@ -107,12 +122,13 @@ class Receiver(threading.Thread):
                 dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
                 return
 
-            self.logger.log(LogTypes.RCV, f'Packet {packet_number} received.')
-
-            last_frame_received, can_write = ack_handler.send_ack(address, packet_number, last_frame_received)
-
-            if can_write:
-                file.write(data)
+            if random.randint(0, 100) <= self.CORRUPTION_CHANCE:
+                self.logger.log(LogTypes.WRN, 'Packet is corrupted')
+            else:
+                self.logger.log(LogTypes.RCV, f'Packet {packet_number} received.')
+                last_frame_received, can_write = ack_handler.send_ack(udp_sender, address, packet_number, last_frame_received)
+                if can_write:
+                    file.write(data)
 
         if self.running: # normal receiver execution end
             # finnish writing --> closing the file
@@ -122,7 +138,7 @@ class Receiver(threading.Thread):
             dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL) #TODO return
         else:
             if self.sender_address is not None:
-                Udp.send(SenderPacketHandler.make_packet(ERROR_NUMBER), self.socket, self.sender_address)
+                udp_sender.send(SenderPacketHandler.make_packet(ERROR_NUMBER), self.socket, self.sender_address)
             self.socket.close()
 
     def terminate(self):

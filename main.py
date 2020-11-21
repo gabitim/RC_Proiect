@@ -138,7 +138,8 @@ class MainWindow(QMainWindow):
         parameters += [self.window_size_slider.value()]
         parameters += [self.packet_loss_chance_slider.value()]
         parameters += [self.packet_corruption_chance_slider.value()]
-        parameters += [self.timeout_slider.value()]
+        # parameter is in seconds
+        parameters += [self.timeout_slider.value() / 1000]
         return parameters
 
     def start_transmission(self):
@@ -154,7 +155,7 @@ class MainWindow(QMainWindow):
 
             parameters = self.parameters()
 
-            self.worker = Sender(filename, self.SIGNALS) # , parameters)
+            self.worker = Sender(filename, parameters, self.SIGNALS)
 
         self.log_signal.connect(self.log)
         self.on_finish_signal.connect(self.on_finish)

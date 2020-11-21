@@ -5,7 +5,7 @@ import time
 class Timer:
     TIMER_STOP = -1
 
-    def __init__(self, duration):
+    def __init__(self, duration=0.5):
         self.start_time = self.TIMER_STOP
         self.duration = duration
 
@@ -28,3 +28,6 @@ class Timer:
             return False
         else:
             return time.time() - self.start_time >= self.duration
+
+    def set_timeout(self, duration):
+        self.duration = duration
