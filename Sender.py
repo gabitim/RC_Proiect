@@ -17,6 +17,7 @@ from Components import Logger, \
     Timer, \
     Udp
 
+# packet/acknowledgement number used as error code when sending packets
 ERROR_NUMBER = -1000
 
 SEP = os.path.sep

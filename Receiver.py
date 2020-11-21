@@ -15,6 +15,7 @@ from Components import Logger, \
     SenderPacketHandler, \
     Udp
 
+# packet/acknowledgement number used as error code when sending packets
 ERROR_NUMBER = -1000
 
 # parameter from QT ; default value below
