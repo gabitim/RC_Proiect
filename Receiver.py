@@ -5,6 +5,8 @@ import sys
 import os
 import threading
 from pydispatch import dispatcher
+from enums.finishtypes import FinishTypes
+from enums.logtypes import LogTypes
 
 SEP = os.path.sep
 
@@ -26,8 +28,8 @@ class ReceiverAcknowledgementHandler:
     def send_ack(self, address, packet_number, LFR):
         # if we have the right package send the ack to move the window
         if packet_number == LFR:
-            self.logger.log('INF', 'Got expected packet')
-            self.logger.log('SNT', f'Acknowledgement {LFR} sent.')
+            self.logger.log(LogTypes.INF, 'Got expected packet')
+            self.logger.log(LogTypes.SNT, f'Acknowledgement {LFR} sent.')
             ack_packet = SenderPacketHandler.make_packet(LFR) #TODO pack
             Udp.send(ack_packet, self.socket, address) #TODO pack
 
@@ -35,8 +37,8 @@ class ReceiverAcknowledgementHandler:
             return LFR, True
         # if we have wrong packet send ack to reset the window
         else:
-            self.logger.log('INF', 'Got wrong packet')
-            self.logger.log('SNT', f'Acknowledgement {LFR - 1} sent.')
+            self.logger.log(LogTypes.INF, 'Got wrong packet')
+            self.logger.log(LogTypes.SNT, f'Acknowledgement {LFR - 1} sent.')
             ack_packet = SenderPacketHandler.make_packet(LFR - 1) #TODO pack
             Udp.send(ack_packet, self.socket, address) #TODO pack
 
@@ -76,17 +78,17 @@ class Receiver:
         self.running = True
 
     def run(self):
-        self.logger.log('SET', 'Sender has started')
+        self.logger.log(LogTypes.SET, 'Sender has started')
 
         #TODO handshake
 
-        self.logger.log('INF', 'Handshake successful')
+        self.logger.log(LogTypes.INF, 'Handshake successful')
 
         # try open, or create the file for writing
         try:
             file = open(self.filename, 'wb')
         except IOError:
-            self.logger.log('ERR', f'Unable to open {self.filename}')
+            self.logger.log(LogTypes.ERR, f'Unable to open {self.filename}')
             #TODO return
             return
 
@@ -101,7 +103,7 @@ class Receiver:
                 break
 
             packet_number, data = ReceiverPacketHandler.extract_information(packet) #TODO pack
-            self.logger.log('RCV', f'Packet {LFR - 1} received.')
+            self.logger.log(LogTypes.RCV, f'Packet {LFR - 1} received.')
 
             LFR, can_write = ack_handler.send_ack(address, packet_number, LFR) #TODO pac
 
@@ -110,11 +112,11 @@ class Receiver:
 
         if self.running: # normal receiver execution end
             # finnish writing --> closing the file
-            self.logger.log('SET', 'All packets received. Shutting down.')
+            self.logger.log(LogTypes.SET, 'All packets received. Shutting down.')
             file.close()
             self.socket.close()
             self.running = False
-            dispatcher.send(self.FINISH_SIGNAL, type='NORMAL') #TODO return
+            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL) #TODO return
 
     def stop(self):
         self.running = False

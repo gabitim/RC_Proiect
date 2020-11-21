@@ -8,7 +8,8 @@ from PyQt5.QtCore import pyqtSignal
 from Front.form import Ui_MainWindow
 from Receiver import Receiver
 from Sender import Sender
-from Components.Logger import 
+from enums.finishtypes import FinishTypes
+from enums.logtypes import LogTypes
 
 
 def create_signal():
@@ -23,16 +24,17 @@ class MainWindow(QMainWindow):
     LOG_PAGE = 2
 
     COLOR_DICT = {
-        'SET' : '#C7EA46', # END OF TRANSMISSION (LIME GREEN)
-        'SNT' : '#000000', # SENT (BLACK)
-        'RCV' : '#1E90FF', # RECEIVED (LIGHT BLUE)
-        'ERR' : '#FF0000', # ERROR (RED)
-        'WRN' : '#994D00', # WARNING (ORANGE)
-        'INF' : '#013220'  # INFORMATIVE (DARK GREEN)
+        LogTypes.SET : '#C7EA46', # LIME GREEN
+        LogTypes.SNT : '#000000', # BLACK
+        LogTypes.RCV : '#1E90FF', # LIGHT BLUE
+        LogTypes.ERR : '#FF0000', # RED
+        LogTypes.WRN : '#994D00', # ORANGE
+        LogTypes.INF : '#013220', # DARK GREEN
+        LogTypes.WSH : '#871F78'  # DARK PURPLE
     }
 
-    log_signal = pyqtSignal(str, str)
-    on_finish_signal = pyqtSignal(str)
+    log_signal = pyqtSignal(LogTypes, str)
+    on_finish_signal = pyqtSignal(FinishTypes)
 
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
@@ -166,7 +168,7 @@ class MainWindow(QMainWindow):
         self.on_finish_signal.emit(type)
 
     def on_finish(self, type):
-        if type.upper() == 'NORMAL':
+        if type == FinishTypes.NORMAL:
             # TODO dispay finished dialog
             pass
 

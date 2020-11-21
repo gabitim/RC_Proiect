@@ -7,6 +7,8 @@ import _thread
 import threading
 import time
 from pydispatch import dispatcher
+from enums.finishtypes import FinishTypes
+from enums.logtypes import LogTypes
 
 # import the modules scripts
 from Components import Logger, \
@@ -54,11 +56,11 @@ class SenderAcknowledgementHandler:
             ack, _ = ReceiverPacketHandler.extract_information(packet) #TODO pack
 
             # if we have ACK for the LAR
-            self.logger.log('RCV', f'Acknowledgement {LAR} received.')
+            self.logger.log(LogTypes.RCV, f'Acknowledgement {LAR} received.')
             if ack >= LAR:
                 mutex.acquire()
                 LAR = ack + 1
-                self.logger.log('INF', f'Shifting window to {LAR}.')
+                self.logger.log(LogTypes.WSH, f'Shifting window to {LAR}.')
                 timer_object.stop()
                 mutex.release()
 
@@ -98,17 +100,17 @@ class Sender:
         global LAR
         global timer_object
 
-        self.logger.log('SET', 'Sender has started')
+        self.logger.log(LogTypes.SET, 'Sender has started')
 
         #TODO handshake
 
-        self.logger.log('INF', 'Handshake successful')
+        self.logger.log(LogTypes.INF, 'Handshake successful')
 
         # we try open the file
         try:
             file = open(self.filename, 'rb')
         except IOError:
-            self.logger.log('ERR', f'Unable to open {self.filename}')
+            self.logger.log(LogTypes.ERR, f'Unable to open {self.filename}')
             #TODO return
             return
 
@@ -126,7 +128,7 @@ class Sender:
         file.close()
 
         number_of_packets = len(packets)
-        self.logger.log('INF', f'{number_of_packets} were created')
+        self.logger.log(LogTypes.INF, f'{number_of_packets} were created')
         window_size = min(WINDOW_SIZE, number_of_packets) #TODO logic
 
         # by LFS we will understand last frame sent
@@ -146,7 +148,7 @@ class Sender:
 
             # send the packets from window
             while LFS < LAR + window_size:
-                self.logger.log('SNT', f'Packet {LFS} sent.')
+                self.logger.log(LogTypes.SNT, f'Packet {LFS} sent.')
                 Udp.send(packets[LFS], self.socket, RECEIVER_ADDRESS) #TODO pack
                 LFS += 1
 
@@ -159,7 +161,7 @@ class Sender:
 
             if timer_object.timeout():
                 # print('we timeout out') # TODO REMOVE?
-                self.logger.log('INF', f'Timeout. Resending window.')
+                self.logger.log(LogTypes.INF, f'Timeout. Resending window.')
                 timer_object.stop()
                 # we send all the packets from window again
                 LFS = LAR
@@ -170,11 +172,11 @@ class Sender:
 
         if self.running: # normal sender execution end
             # send an empty packet for breaking the loop and closing the file
-            self.logger.log('SET', 'All packets sent. Shutting down.')
+            self.logger.log(LogTypes.SET, 'All packets sent. Shutting down.')
             Udp.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS) #TODO pack
             self.socket.close()
             self.running = False
-            dispatcher.send(self.FINISH_SIGNAL, type='NORMAL') #TODO return
+            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL) #TODO return
 
     def stop(self):
         self.running = False
