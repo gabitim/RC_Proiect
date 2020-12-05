@@ -143,6 +143,8 @@ class MainWindow(QMainWindow):
         return parameters
 
     def start_transmission(self):
+        self.log_text_edit.clear()
+
         if self.client_mode == MainWindow.RECEIVER_MODE:
             foldername = self.path_line_edit.text()
             if foldername == '':
