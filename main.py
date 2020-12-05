@@ -47,6 +47,7 @@ class MainWindow(QMainWindow):
         self.finish_dialog = QDialog(self)
         self.configure_dialogs()
         self.init_signals()
+        self.connect_signals()
 
         self.worker = None
 
@@ -66,7 +67,6 @@ class MainWindow(QMainWindow):
         horizontal_layout.addWidget(button_box)
         button_box.accepted.connect(self.finish_dialog.accept)
 
-
     def connect_buttons(self):
         self.sender_button.clicked.connect(self.choose_sender)
         self.receiver_button.clicked.connect(self.choose_receiver)
@@ -74,6 +74,12 @@ class MainWindow(QMainWindow):
         self.start_button.clicked.connect(self.start_transmission)
         self.stop_button.clicked.connect(self.stop_transmission)
         self.path_button.clicked.connect(self.browse)
+
+    def connect_signals(self):
+        self.log_signal.connect(self.log)
+        self.on_finish_signal.connect(self.on_finish)
+        dispatcher.connect(self.trigger_log_signal, self.LOG_SIGNAL, weak=False)
+        dispatcher.connect(self.trigger_on_finish_signal, self.FINISH_SIGNAL, weak=False)
 
     def choose_sender(self):
         self.client_mode = MainWindow.SENDER_MODE
@@ -144,7 +150,6 @@ class MainWindow(QMainWindow):
 
     def start_transmission(self):
         self.log_text_edit.clear()
-
         if self.client_mode == MainWindow.RECEIVER_MODE:
             foldername = self.path_line_edit.text()
             if foldername == '':
@@ -159,10 +164,6 @@ class MainWindow(QMainWindow):
 
             self.worker = Sender(filename, parameters, self.SIGNALS)
 
-        self.log_signal.connect(self.log)
-        self.on_finish_signal.connect(self.on_finish)
-        dispatcher.connect(self.trigger_log_signal, self.LOG_SIGNAL, weak=False)
-        dispatcher.connect(self.trigger_on_finish_signal, self.FINISH_SIGNAL, weak=False)
         self.worker.start()
 
         self.stacked_widget.setCurrentIndex(MainWindow.LOG_PAGE)
