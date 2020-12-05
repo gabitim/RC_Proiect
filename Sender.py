@@ -28,6 +28,7 @@ SLEEP_INTERVAL = 0.05
 # parameters from UI QT; below are default values
 RECEIVER_ADDRESS = ('localhost', 9998)
 
+# TO DO DELETE THESE FUCKING GLOBAL VARIABLES
 # global variables
 last_ack_received = -1
 mutex = _thread.allocate_lock()  # used  for synchronizing threads

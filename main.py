@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
     def configure_dialogs(self):
         self.path_dialog.setAcceptMode(QFileDialog.AcceptOpen)
 
-        self.finish_dialog.resize(150, 100)
+        self.finish_dialog.resize(200, 100)
         button_box = QDialogButtonBox(self.finish_dialog)
         horizontal_layout = QHBoxLayout(self.finish_dialog)
         button_box.setStandardButtons(QDialogButtonBox.Ok)
@@ -81,64 +81,49 @@ class MainWindow(QMainWindow):
         dispatcher.connect(self.trigger_log_signal, self.LOG_SIGNAL, weak=False)
         dispatcher.connect(self.trigger_on_finish_signal, self.FINISH_SIGNAL, weak=False)
 
+    def labelsAndSlidersSetEnabled(self, enabled):
+        self.packet_size_label.setEnabled(enabled)
+        self.packet_size_slider.setEnabled(enabled)
+        self.packet_size_value_label.setEnabled(enabled)
+        self.window_size_label.setEnabled(enabled)
+        self.window_size_slider.setEnabled(enabled)
+        self.window_size_value_label.setEnabled(enabled)
+        self.packet_loss_chance_label.setEnabled(enabled)
+        self.packet_loss_chance_slider.setEnabled(enabled)
+        self.packet_loss_chance_value_label.setEnabled(enabled)
+        self.packet_corruption_chance_label.setEnabled(enabled)
+        self.packet_corruption_chance_slider.setEnabled(enabled)
+        self.packet_corruption_chance_value_label.setEnabled(enabled)
+        self.timeout_label.setEnabled(enabled)
+        self.timeout_slider.setEnabled(enabled)
+        self.timeout_value_label.setEnabled(enabled)
+
     def choose_sender(self):
         self.client_mode = MainWindow.SENDER_MODE
-
-        self.packet_size_label.setEnabled(1)
-        self.packet_size_slider.setEnabled(1)
-        self.packet_size_value_label.setEnabled(1)
-        self.window_size_label.setEnabled(1)
-        self.window_size_slider.setEnabled(1)
-        self.window_size_value_label.setEnabled(1)
-        self.packet_loss_chance_label.setEnabled(1)
-        self.packet_loss_chance_slider.setEnabled(1)
-        self.packet_loss_chance_value_label.setEnabled(1)
-        self.packet_corruption_chance_label.setEnabled(1)
-        self.packet_corruption_chance_slider.setEnabled(1)
-        self.packet_corruption_chance_value_label.setEnabled(1)
-        self.timeout_label.setEnabled(1)
-        self.timeout_slider.setEnabled(1)
-        self.timeout_value_label.setEnabled(1)
+        self.labelsAndSlidersSetEnabled(1)
 
         self.path_label.setText('File name')
         self.path_line_edit.setText('')
         self.path_button.setText('Choose file')
 
         self.path_dialog.setFileMode(QFileDialog.ExistingFile)
-
         self.stacked_widget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
 
     def choose_receiver(self):
         self.client_mode = MainWindow.RECEIVER_MODE
-
-        self.packet_size_label.setEnabled(0)
-        self.packet_size_slider.setEnabled(0)
-        self.packet_size_value_label.setEnabled(0)
-        self.window_size_label.setEnabled(0)
-        self.window_size_slider.setEnabled(0)
-        self.window_size_value_label.setEnabled(0)
-        self.packet_loss_chance_label.setEnabled(0)
-        self.packet_loss_chance_slider.setEnabled(0)
-        self.packet_loss_chance_value_label.setEnabled(0)
-        self.packet_corruption_chance_label.setEnabled(0)
-        self.packet_corruption_chance_slider.setEnabled(0)
-        self.packet_corruption_chance_value_label.setEnabled(0)
-        self.timeout_label.setEnabled(0)
-        self.timeout_slider.setEnabled(0)
-        self.timeout_value_label.setEnabled(0)
+        self.labelsAndSlidersSetEnabled(0)
 
         self.path_label.setText('Folder name')
         self.path_line_edit.setText('')
         self.path_button.setText('Choose folder')
 
         self.path_dialog.setFileMode(QFileDialog.Directory)
-
         self.stacked_widget.setCurrentIndex(MainWindow.PARAMETERS_PAGE)
 
     def back_to_mode(self):
         self.stacked_widget.setCurrentIndex(MainWindow.MODE_PAGE)
 
-    def parameters(self):
+    def getParameters(self):
         parameters = []
         parameters += [self.packet_size_slider.value()]
         parameters += [self.window_size_slider.value()]
@@ -150,22 +135,19 @@ class MainWindow(QMainWindow):
 
     def start_transmission(self):
         self.log_text_edit.clear()
+
         if self.client_mode == MainWindow.RECEIVER_MODE:
             foldername = self.path_line_edit.text()
             if foldername == '':
                 foldername = '.'
-
             self.worker = Receiver(foldername, self.SIGNALS)
 
         if self.client_mode == MainWindow.SENDER_MODE:
             filename = self.path_line_edit.text()
-
-            parameters = self.parameters()
-
+            parameters = self.getParameters()
             self.worker = Sender(filename, parameters, self.SIGNALS)
 
         self.worker.start()
-
         self.stacked_widget.setCurrentIndex(MainWindow.LOG_PAGE)
 
     def stop_transmission(self):
@@ -192,11 +174,11 @@ class MainWindow(QMainWindow):
             self.finish_dialog.setWindowTitle('Stopped')
 
         self.finish_dialog.exec()
-
         self.stacked_widget.setCurrentIndex(MainWindow.MODE_PAGE)
 
     def browse(self):
         if self.path_dialog.exec() == QFileDialog.Accepted:
+            # Single file transmission (get the first selected)
             path = self.path_dialog.selectedFiles()[0]
             self.path_line_edit.setText(path)
 
