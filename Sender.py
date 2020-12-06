@@ -13,8 +13,7 @@ from enums.logtypes import LogTypes
 
 # import the modules scripts
 from Components import Logger, \
-    ReceiverPacketHandler, \
-    SenderPacketHandler, \
+    PacketHandler, \
     Timer, \
     Udp
 
@@ -22,11 +21,8 @@ from Components import Logger, \
 ERROR_NUMBER = -1000
 
 SEP = os.path.sep
-SENDER_ADDRESS = ('localhost', 6663)
 SLEEP_INTERVAL = 0.05
 
-# parameters from UI QT; below are default values
-RECEIVER_ADDRESS = ('localhost', 9998)
 
 # TO DO DELETE THESE FUCKING GLOBAL VARIABLES
 # global variables
@@ -80,20 +76,17 @@ class SenderAcknowledgementHandler:
 
 
 class Sender(threading.Thread):
-    HANDSHAKE_SIZE = 16 + 8 + 8 + 256
 
     # parameters order: PACKET_SIZE, WINDOW_SIZE, LOSS_CHANCE, CORRUPTION_CHANCE, TIMEOUT
     def __init__(self, filename, parameters, SIGNALS=None):
         super().__init__()
         self.running = True
 
-        self.filename = filename
+        self.socket = None
+        self.udp = None
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.bind(SENDER_ADDRESS)
-        self.filename = filename
-
-        self.PACKET_SIZE = parameters[0]
+        self.FILENAME = filename
+        self.DATA_MAX_SIZE = parameters[0]
         self.WINDOW_SIZE = parameters[1]
         self.LOSS_CHANCE = parameters[2]
         self.CORRUPTION_CHANCE = parameters[3]
@@ -111,6 +104,63 @@ class Sender(threading.Thread):
 
         self.logger = Logger.Logger(self.LOG_SIGNAL)
 
+    def handshake(self):
+        self.logger.log(LogTypes.INF, 'Handshake started')
+
+        '''  PROBLEM WITH SEP FROM WINDOWS!!  '''
+        last_sep = self.FILENAME.rfind(f'{SEP}')
+        last_sep = max(last_sep, self.FILENAME.rfind('/'))
+
+        self.udp.send_handshake(PacketHandler.PacketHandler.Types.HANDSHAKE,
+                                self.PACKET_SIZE,
+                                self.LOSS_CHANCE,
+                                self.CORRUPTION_CHANCE,
+                                self.FILENAME[last_sep + 1:])
+
+        data = udp.receive()
+
+        self.logger.log(LogTypes.INF, 'Handshake successful')
+
+    def read_data(self):
+        try:
+            file = open(self.FILENAME, 'rb')
+
+            # create packets and add to buffer
+            frames = []
+
+            while True:
+                data = file.read(self.DATA_MAX_SIZE)
+                if not data:
+                    break
+                frames.append(data)
+
+        except IOError:
+            self.error(f'Unable to open {self.FILENAME}')
+        except:
+            self.error(f'Unexpected file error')
+        finally:
+            file.close()
+
+        number_of_packets = len(packets)
+        self.logger.log(LogTypes.INF, f'{number_of_packets} were created')
+
+    def wait_for_conn(self):
+        default_address = ('0.0.0.0', Udp.SENDER_PORT)
+
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as socket:
+            socket.bind(default_address)
+            socket.listen(1)
+            client_socket, receiver_addr = socket.accept()
+
+        return client_socket, receiver_addr
+
+    def error(self, message):
+        self.logger.log(LogTypes.ERR, message)
+        self.socket.close()
+        if not self.console_mode:
+            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
+        self.running = False
+
     def run(self):
         global mutex
         global last_ack_received
@@ -118,112 +168,71 @@ class Sender(threading.Thread):
 
         self.logger.log(LogTypes.SET, 'Sender has started')
 
-        udp_sender = Udp.UdpSender(self.LOSS_CHANCE, self.LOG_SIGNAL)
-
-        packet_size_bytes = self.PACKET_SIZE.to_bytes(16, byteorder='little', signed=True)
-        loss_chance_bytes = self.LOSS_CHANCE.to_bytes(8, byteorder='little', signed=True)
-        corruption_chance_bytes = self.CORRUPTION_CHANCE.to_bytes(8, byteorder='little', signed=True)
-        last_sep = self.filename.rfind(f'{SEP}')
-        # windows is wierd
-        last_sep = max(last_sep, self.filename.rfind('/'))
-
-        filename_bytes = self.filename[last_sep + 1:].encode('utf-8')
-        packet = packet_size_bytes + loss_chance_bytes + corruption_chance_bytes + filename_bytes
-
-        udp_sender.send(packet, self.socket, RECEIVER_ADDRESS)
-        data = self.socket.recv(Sender.HANDSHAKE_SIZE)
-        if packet_size_bytes != data[0:16] or loss_chance_bytes != data[16:24] or\
-            corruption_chance_bytes != data[24:32] or filename_bytes != data[32:]:
-            self.logger.log(LogTypes.ERR, f'Handshake failed')
-            self.socket.close()
-            if not self.console_mode:
-                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
-            return
-
-        self.logger.log(LogTypes.INF, 'Handshake successful')
-
-        # we try open the file
+        self.socket, reciever_addr = self.wait_for_conn()
         try:
-            file = open(self.filename, 'rb')
-        except IOError:
-            self.logger.log(LogTypes.ERR, f'Unable to open {self.filename}')
-            udp_sender.send(SenderPacketHandler.make_packet(-1000, 'Sender Error'), self.socket, RECEIVER_ADDRESS)
-            self.socket.close()
-            if not self.console_mode:
-                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
-            return
+            self.udp = Udp.Udp(self.socket, reciever_addr, self.logger)
+            self.handshake()
+            self.read_data()
 
-        # create packets and add to buffer
-        packets = []
-        packet_number = 0
+            window_size = min(self.WINDOW_SIZE, number_of_packets)
 
-        while True:
-            data = file.read(self.PACKET_SIZE)
-            if not data:
-                break
-            packets.append(SenderPacketHandler.make_packet(packet_number, data))
-            packet_number += 1
+            last_frame_sent = -1
 
-        file.close()
+            ack_handler = SenderAcknowledgementHandler(self.socket, self.CORRUPTION_CHANCE, number_of_packets,
+                                                       self.LOG_SIGNAL)
+            _thread.start_new_thread(ack_handler.wait_for_ack, ())
 
-        number_of_packets = len(packets)
-        self.logger.log(LogTypes.INF, f'{number_of_packets} were created')
-        window_size = min(self.WINDOW_SIZE, number_of_packets)
-
-        last_frame_sent = -1
-
-        ack_handler = SenderAcknowledgementHandler(self.socket, self.CORRUPTION_CHANCE, number_of_packets, self.LOG_SIGNAL)
-        _thread.start_new_thread(ack_handler.wait_for_ack, ())
-
-        # we run until all the packets are delivered
-        while self.running and last_ack_received < number_of_packets - 1:
-            mutex.acquire()
-
-            # starting the timer
-            if not timer_object.timer_is_running():
-                # print(f"starting the timer") # TODO REMOVE?
-                timer_object.start()
-
-            # send the packets from window
-            while last_frame_sent < last_ack_received + window_size:
-                last_frame_sent += 1
-                udp_sender.send(packets[last_frame_sent], self.socket, RECEIVER_ADDRESS)
-                self.logger.log(LogTypes.SNT, f'Packet {last_frame_sent} sent.')
-
-            # we put this thread to sleep until we have a timeout or we have ack
-            while timer_object.timer_is_running() and not timer_object.timeout():
-                mutex.release()
-                # print('Sender is sleeping; waiting for ack or timeout') # TODO REMOVE?
-                time.sleep(SLEEP_INTERVAL)
+            # we run until all the packets are delivered
+            while self.running and last_ack_received < number_of_packets - 1:
                 mutex.acquire()
 
-            if timer_object.timeout():
-                # print('we timeout out') # TODO REMOVE?
-                self.logger.log(LogTypes.INF, f'Timeout. Resending window.')
-                timer_object.stop()
-                # we send all the packets from window again
-                last_frame_sent = last_ack_received
+                # starting the timer
+                if not timer_object.timer_is_running():
+                    # print(f"starting the timer") # TODO REMOVE?
+                    timer_object.start()
+
+                # send the packets from window
+                while last_frame_sent < last_ack_received + window_size:
+                    last_frame_sent += 1
+                    udp_sender.send(packets[last_frame_sent], self.socket, RECEIVER_ADDRESS)
+                    self.logger.log(LogTypes.SNT, f'Packet {last_frame_sent} sent.')
+
+                # we put this thread to sleep until we have a timeout or we have ack
+                while timer_object.timer_is_running() and not timer_object.timeout():
+                    mutex.release()
+                    # print('Sender is sleeping; waiting for ack or timeout') # TODO REMOVE?
+                    time.sleep(SLEEP_INTERVAL)
+                    mutex.acquire()
+
+                if timer_object.timeout():
+                    # print('we timeout out') # TODO REMOVE?
+                    self.logger.log(LogTypes.INF, f'Timeout. Resending window.')
+                    timer_object.stop()
+                    # we send all the packets from window again
+                    last_frame_sent = last_ack_received
+                else:
+                    # if we didnt timeout that means we got a correct ack
+                    window_size = min(self.WINDOW_SIZE, number_of_packets - last_ack_received - 1)
+                mutex.release()
+
+            if last_ack_received > number_of_packets:
+                self.logger.log(LogTypes.ERR, 'Receiver Error')
+                self.socket.close()
+                if not self.console_mode:
+                    dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
+                return
+
+            if self.running:  # normal sender execution end
+                # send an empty packet for breaking the loop and closing the file
+                self.logger.log(LogTypes.SET, 'All packets sent. Shutting down.')
+                udp_sender.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
+                self.socket.close()
+                if not self.console_mode:
+                    dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
             else:
-                # if we didnt timeout that means we got a correct ack
-                window_size = min(self.WINDOW_SIZE, number_of_packets - last_ack_received - 1)
-            mutex.release()
-
-        if last_ack_received > number_of_packets:
-            self.logger.log(LogTypes.ERR, 'Receiver Error')
-            self.socket.close()
-            if not self.console_mode:
-                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
-            return
-
-        if self.running: # normal sender execution end
-            # send an empty packet for breaking the loop and closing the file
-            self.logger.log(LogTypes.SET, 'All packets sent. Shutting down.')
-            udp_sender.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
-            self.socket.close()
-            if not self.console_mode:
-                dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
-        else:
-            udp_sender.send(SenderPacketHandler.make_packet(ERROR_NUMBER), self.socket, RECEIVER_ADDRESS)
+                udp_sender.send(SenderPacketHandler.make_packet(ERROR_NUMBER), self.socket, RECEIVER_ADDRESS)
+                self.socket.close()
+        except:
             self.socket.close()
 
 
@@ -232,7 +241,7 @@ class Sender(threading.Thread):
 
 
 def run_sender(filename, parameters):
-    sender = Sender(filename, parameters) #TODO console
+    sender = Sender(filename, parameters)  # TODO console
     sender.run()
 
 
