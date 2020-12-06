@@ -7,11 +7,11 @@ udp.send(packet)
 """
 
 '''
---- source port [0-15]  
+--- source port [0-15]
 --- destination port[16-31]
 --- length [32-47]
 --- checksum [48-63]
---- type[64-66]  
+--- type[64-66]
 --- seq_num[67-95]
 --- data[96..]
 '''
@@ -64,9 +64,6 @@ class PacketHandler:
     def compute_checksum(self):
         pass
 
-    def set_destination_port(self, destination_port):
-        self.destination_port = destination_port
-
     def get_type(self):
         return self.type
 
@@ -98,10 +95,11 @@ class PacketHandler:
         # if checksum != compute_checksum(bytes):
         #         return None
 
-        if source_port != self.source_port:
+        # source and destination are reversed in incomming packets
+        if source_port != self.destination_port:
             return None
-
-        if destination_port != self.destination_port:
+        # source and destination are reversed in incomming packets
+        if destination_port != self.source_port:
             return None
 
         return type, seq_num, data
@@ -124,6 +122,3 @@ class PacketHandler:
 
         # TODO set corruption_chance
         return data_max_size, loss_chance, filename
-
-
-
