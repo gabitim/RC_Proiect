@@ -11,15 +11,14 @@ from enums.finishtypes import FinishTypes
 from enums.logtypes import LogTypes
 
 from Components import Logger, \
-    ReceiverPacketHandler, \
-    SenderPacketHandler, \
+    PacketHandler, \
     Udp
 
 SEP = os.path.sep
 
 # receive packets and writes them into filename
 class Receiver(threading.Thread):
-    def __init__(self, foldername, sender_ip='localhost' SIGNALS=None): # TODO add sender_ip
+    def __init__(self, foldername, sender_ip='localhost', SIGNALS=None): # TODO add sender_ip
         super().__init__()
         self.running = True
         self.finishing = False

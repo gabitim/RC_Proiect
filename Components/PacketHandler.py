@@ -1,3 +1,4 @@
+from enum import Enum
 """
 packet = Packet(date, dimeni)
 

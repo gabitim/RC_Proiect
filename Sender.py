@@ -144,10 +144,10 @@ class Sender(threading.Thread):
     def wait_for_conn(self):
         default_address = ('0.0.0.0', Udp.SENDER_PORT)
 
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as socket:
-            socket.bind(default_address)
-            socket.listen(1)
-            client_socket, receiver_addr = socket.accept()
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.bind(default_address)
+            sock.listen(1)
+            client_socket, receiver_addr = sock.accept()
 
         return client_socket, receiver_addr
 

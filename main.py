@@ -140,7 +140,9 @@ class MainWindow(QMainWindow):
             foldername = self.path_line_edit.text()
             if foldername == '':
                 foldername = '.'
-            self.worker = Receiver(foldername, self.SIGNALS)
+            # TODO get from edit
+            sender_ip = 'localhost'
+            self.worker = Receiver(foldername, sender_ip, self.SIGNALS)
 
         if self.client_mode == MainWindow.SENDER_MODE:
             filename = self.path_line_edit.text()
