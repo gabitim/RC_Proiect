@@ -34,11 +34,11 @@ timer_object = Timer.Timer()  # instance of Timer class
 class SenderAcknowledgementHandler:
     ACK_BUFFER_SIZE = 4
 
-    def __init__(self, socket, CORRUPTION_CHANCE, number_of_packets, LOG_SIGNAL=None):
-        self.socket = socket
-        self.CORRUPTION_CHANCE = CORRUPTION_CHANCE
-        self.number_of_packets = number_of_packets
+    def __init__(self, sender_thread, udp, number_of_frames, LOG_SIGNAL=None):
+        self.udp = udp
+        self.number_of_frames = number_of_frames
         self.logger = Logger.Logger(LOG_SIGNAL)
+        self.sender_thread = sender_thread
 
     def wait_for_ack(self):
         global last_ack_received
@@ -48,31 +48,27 @@ class SenderAcknowledgementHandler:
         # we wait for the sender to send ack for the current LAR
         while True:
             try:
-                packet, _ = Udp.receive(self.socket, SenderAcknowledgementHandler.ACK_BUFFER_SIZE)
+                packet = self.udp.receive()
             except:
                 break
 
-            ack, _ = ReceiverPacketHandler.extract_information(packet)
-
-            if ack == ERROR_NUMBER:
+            if packet is None:
                 mutex.acquire()
                 # Arbitrary value to signal receiver error
-                last_ack_received = self.number_of_packets * 2
+                last_ack_received = self.number_of_frames * 2
                 timer_object.stop()
                 mutex.release()
                 return
 
-            if random.randint(0, 100) <= self.CORRUPTION_CHANCE:
-                self.logger.log(LogTypes.WRN, 'Acknowledgement is corrupted')
-            else:
-                # if we have ACK for the LAR
-                self.logger.log(LogTypes.RCV, f'Acknowledgement {ack} received.')
-                if ack > last_ack_received:
-                    mutex.acquire()
-                    last_ack_received = ack
-                    self.logger.log(LogTypes.OTH, f'Shifting window to {last_ack_received}.')
-                    timer_object.stop()
-                    mutex.release()
+            _, seq_num, _ = packet
+            self.logger.log(LogTypes.RCV, f'Acknowledgement {seq_num} received.')
+
+            if seq_num > last_ack_received:
+                mutex.acquire()
+                last_ack_received = seq_num
+                self.logger.log(LogTypes.OTH, f'Shifting window to {last_ack_received}.')
+                timer_object.stop()
+                mutex.release()
 
 
 class Sender(threading.Thread):
@@ -141,8 +137,9 @@ class Sender(threading.Thread):
         finally:
             file.close()
 
-        number_of_packets = len(packets)
-        self.logger.log(LogTypes.INF, f'{number_of_packets} were created')
+        number_of_frames = len(packets)
+        self.logger.log(LogTypes.INF, f'{number_of_frames} were created')
+        return frames
 
     def wait_for_conn(self):
         default_address = ('0.0.0.0', Udp.SENDER_PORT)
@@ -172,18 +169,20 @@ class Sender(threading.Thread):
         try:
             self.udp = Udp.Udp(self.socket, reciever_addr, self.logger)
             self.handshake()
-            self.read_data()
+            frames = self.read_data()
+            number_of_frames = len(frames)
 
-            window_size = min(self.WINDOW_SIZE, number_of_packets)
-
+            window_size = min(self.WINDOW_SIZE, number_of_frames)
             last_frame_sent = -1
-
-            ack_handler = SenderAcknowledgementHandler(self.socket, self.CORRUPTION_CHANCE, number_of_packets,
-                                                       self.LOG_SIGNAL)
+            ack_handler = SenderAcknowledgementHandler(
+                self,
+                self.udp, number_of_frames,
+                self.LOG_SIGNAL
+            )
             _thread.start_new_thread(ack_handler.wait_for_ack, ())
 
             # we run until all the packets are delivered
-            while self.running and last_ack_received < number_of_packets - 1:
+            while self.running and last_ack_received < number_of_frames - 1:
                 mutex.acquire()
 
                 # starting the timer
@@ -194,7 +193,7 @@ class Sender(threading.Thread):
                 # send the packets from window
                 while last_frame_sent < last_ack_received + window_size:
                     last_frame_sent += 1
-                    udp_sender.send(packets[last_frame_sent], self.socket, RECEIVER_ADDRESS)
+                    self.udp.send(PacketHandler.Types.DATA, last_frame_sent, frames[last_frame_sent])
                     self.logger.log(LogTypes.SNT, f'Packet {last_frame_sent} sent.')
 
                 # we put this thread to sleep until we have a timeout or we have ack
@@ -212,10 +211,10 @@ class Sender(threading.Thread):
                     last_frame_sent = last_ack_received
                 else:
                     # if we didnt timeout that means we got a correct ack
-                    window_size = min(self.WINDOW_SIZE, number_of_packets - last_ack_received - 1)
+                    window_size = min(self.WINDOW_SIZE, number_of_frames - last_ack_received - 1)
                 mutex.release()
 
-            if last_ack_received > number_of_packets:
+            if last_ack_received > number_of_frames:
                 self.logger.log(LogTypes.ERR, 'Receiver Error')
                 self.socket.close()
                 if not self.console_mode:
@@ -225,13 +224,11 @@ class Sender(threading.Thread):
             if self.running:  # normal sender execution end
                 # send an empty packet for breaking the loop and closing the file
                 self.logger.log(LogTypes.SET, 'All packets sent. Shutting down.')
-                udp_sender.send(SenderPacketHandler.make_empty_packet(), self.socket, RECEIVER_ADDRESS)
-                self.socket.close()
+                self.udp.send(PacketHandler.Types.FINISH)
+                temp = self.udp.receive()
                 if not self.console_mode:
                     dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
-            else:
-                udp_sender.send(SenderPacketHandler.make_packet(ERROR_NUMBER), self.socket, RECEIVER_ADDRESS)
-                self.socket.close()
+            self.socket.close()
         except:
             self.socket.close()
 
