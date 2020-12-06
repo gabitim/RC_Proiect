@@ -13,12 +13,9 @@ SENDER_PORT = 24450
 class Udp:
     def __init__(self, socket, source_port, destination_port, LOG_SIGNAL=None):
         self.socket = socket
-        self.source_port = source_port
-        self.destination_port = destination_port
         self.packet_handler = PacketHandler.PacketHandler(source_port, destination_port)
 
         self.loss_chance = 0
-
         self.buffer_size = 0
         self.update_buffer_size(self.packet_handler.HEADER_SIZE + self.packet_handler.HANDSHAKE_SIZE)
 
