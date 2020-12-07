@@ -18,10 +18,9 @@ SEP = os.path.sep
 
 # receive packets and writes them into filename
 class Receiver(threading.Thread):
-    def __init__(self, foldername, sender_ip='localhost', SIGNALS=None): # TODO add sender_ip
+    def __init__(self, foldername, sender_ip='127.0.0.1', SIGNALS=None): # TODO add sender_ip
         super().__init__()
         self.running = True
-        self.finishing = False
         self.sender_address = (sender_ip, Udp.SENDER_PORT)
 
         self.filename = foldername + SEP
@@ -44,8 +43,8 @@ class Receiver(threading.Thread):
         self.logger.log(LogTypes.SET, 'Receiver has started')
 
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as self.socket:
-            self.connect_to_socket()
-            self.create_udp()
+            # socket does not have an address yet, so init with port 0
+            self.udp = Udp.Udp(self.socket, 0, self.sender_address, self.LOG_SIGNAL)
             self.handshake()
 
             # try open, or create the file for writing
@@ -54,7 +53,7 @@ class Receiver(threading.Thread):
 
             if self.running: # normal receiver execution end
                 # TODO keep sending until recv thread joins
-                self.udp.send(PacketHander.Types.FINISH)
+                self.udp.send(PacketHandler.Types.FINISH)
                 temp = self.udp.receive()
                 self.logger.log(LogTypes.SET, 'All packets received. Shutting down.')
                 if not self.console_mode:
@@ -69,31 +68,18 @@ class Receiver(threading.Thread):
             dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
         self.terminate()
 
-    def connect_to_socket(self):
-        while self.running:
-            counter = 0
-            try: # try every second during 60 seconds to connect, else terminate
-                self.socket.connect(SENDER_ADDRESS)
-            except:
-                counter = counter + 1
-                if counter > 60:
-                    self.error('Could not connect to a Sender')
-                time.sleep(1)
-
-    def create_udp(self):
-        receiver_port = self.socket.getsockname()[1]
-        self.udp = Udp.Udp(self.socket, receiver_port, Udp.SENDER_PORT, self.LOG_SIGNAL)
-
     def handshake(self):
+        self.udp.send(PacketHandler.Types.REQUEST)
+        self.udp.update_source_port()
         temp = self.udp.receive()
         if temp is None:
             pass # TODO
 
-        type, _, self.filename = temp
+        type, _, DATA_MAX_SIZE, LOSS_CHANCE, CORRUPTION_CHANCE, self.filename = temp
         if type != PacketHandler.Types.HANDSHAKE:
             pass # TODO
         # TODO what should be sent?
-        self.udp.send(PacketHandler.Types.HANDSHAKE, data=self.filename)
+        self.udp.send_handshake(DATA_MAX_SIZE, LOSS_CHANCE, CORRUPTION_CHANCE, self.filename)
         self.logger.log(LogTypes.INF, 'Handshake successful')
 
     def receive_packets(self, file):
@@ -106,11 +92,11 @@ class Receiver(threading.Thread):
                 break
 
             type, seq_num, data = temp
-            if type == PacketHander.Types.FINISH:
+            if type == PacketHandler.Types.FINISH:
                 break
             else:
-                self.logger.log(LogTypes.RCV, f'Packet {packet_number} received.')
-                last_frame_received, can_write = send_ack(packet_number, last_frame_received)
+                self.logger.log(LogTypes.RCV, f'Packet {seq_num} received.')
+                last_frame_received, can_write = self.send_ack(seq_num, last_frame_received)
                 if can_write:
                     file.write(data)
 
@@ -120,14 +106,14 @@ class Receiver(threading.Thread):
             last_frame_received += 1
             self.logger.log(LogTypes.OTH, 'Got expected packet')
             self.logger.log(LogTypes.SNT, f'Acknowledgement {last_frame_received} sent.')
-            self.udp.send(PacketHander.Types.ACK, last_frame_received, ack_packet)
+            self.udp.send(PacketHandler.Types.ACK, last_frame_received)
 
             return last_frame_received, True
         # if we have wrong packet send ack to reset the window
         else:
             self.logger.log(LogTypes.OTH, 'Got wrong packet')
             self.logger.log(LogTypes.SNT, f'Acknowledgement {last_frame_received} sent.')
-            self.udp.send(PacketHander.Types.ACK, last_frame_received, ack_packet)
+            self.udp.send(PacketHandler.Types.ACK, last_frame_received)
 
             return last_frame_received, False
 
@@ -142,3 +128,15 @@ if __name__ == '__main__':
     foldername = f"test"
 
     run_receiver(foldername)
+
+''' TODO example
+while self.running:
+    counter = 0
+    try: # try every second during 60 seconds to connect, else terminate
+        self.socket.connec(SENDER_ADDRESS)
+    except:
+        counter = counter + 1
+        if counter > 60:
+            self.error('Could not connect to a Sender')
+        time.sleep(1)
+'''

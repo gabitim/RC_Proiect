@@ -141,7 +141,7 @@ class MainWindow(QMainWindow):
             if foldername == '':
                 foldername = '.'
             # TODO get from edit
-            sender_ip = 'localhost'
+            sender_ip = '127.0.0.1'
             self.worker = Receiver(foldername, sender_ip, self.SIGNALS)
 
         if self.client_mode == MainWindow.SENDER_MODE:

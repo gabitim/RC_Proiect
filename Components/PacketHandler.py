@@ -16,18 +16,19 @@ udp.send(packet)
 --- seq_num[67-95]
 --- data[96..]
 '''
+class Types(Enum):
+    DATA = 1
+    ACK = 2
+    REQUEST = 3
+    HANDSHAKE = 4
+    FINISH = 5
 
+    def to_bytes(self, length, byteorder, signed=False):
+        return self.value.to_bytes(length, byteorder=byteorder, signed=signed)
 
 class PacketHandler:
     HEADER_SIZE = 96
     HANDSHAKE_SIZE = 64
-
-    class Types(Enum):
-        DATA = 1
-        ACK = 2
-        HANDSHAKE = 3
-        ERROR = 4
-        FINISH = 5
 
     def __init__(self, source_port, destination_port):
         self.source_port = source_port
@@ -36,7 +37,7 @@ class PacketHandler:
         self.checksum = 0
         self.type = 0
         self.seq_num = 0
-        self.data = ''
+        self.data = b''
         self.handshake_bytes = b''
 
     def make(self, type, seq_num=0, data=b''):
@@ -51,10 +52,11 @@ class PacketHandler:
     def make_handshake(self, type, data_max_size, loss_chance, corruption_chance, filename):
         self.type = type
         self.seq_num = 0
-        self.data = data_max_size.to_bytes(16, byteorder='little', signed=False)
-        self.data += loss_chance.to_bytes(8, byteorder='little', signed=False)
-        self.data += corruption_chance.to_bytes(8, byteorder='little', signed=False)
-        self.data += filename.to_bytes(32, byteorder='little', signed=False)
+        self.data = data_max_size.to_bytes(16, 'little')
+        self.data += loss_chance.to_bytes(8, 'little')
+        self.data += corruption_chance.to_bytes(8, 'little')
+        self.data += filename.encode().ljust(32, b'\0')
+
 
         self.compute_length()
         self.compute_checksum()
@@ -69,25 +71,26 @@ class PacketHandler:
         return self.type
 
     def get_bytes(self):
-        bytes = self.source_port.to_bytes(16, byteorder='little', signed=False)
-        bytes += self.destination_port.to_bytes(16, byteorder='little', signed=False)
-        bytes += self.length.to_bytes(16, byteorder='little', signed=False)
-        bytes += self.checksum.to_bytes(16, byteorder='little', signed=False)
-        bytes += self.type.to_bytes(3, byteorder='little', signed=False)
-        bytes += self.seq_num.to_bytes(29, byteorder='little', signed=False)
+        bytes = self.source_port.to_bytes(16, 'little')
+        bytes += self.destination_port.to_bytes(16, 'little')
+        bytes += self.length.to_bytes(16, 'little')
+        bytes += self.checksum.to_bytes(16, 'little')
+        bytes += self.type.to_bytes(3, 'little')
+        bytes += self.seq_num.to_bytes(29, 'little')
         bytes += self.data
 
         return bytes
 
     def decode(self, bytes):
-        source_port = int.from_bytes(bytes[0:16], byteorder='little', signed=False)
-        destination_port = int.from_bytes(bytes[16:32], byteorder='little', signed=False)
-        length = int.from_bytes(bytes[32:48], byteorder='little', signed=False)
-        checksum = int.from_bytes(bytes[48:64], byteorder='little', signed=False)
-        type = int.from_bytes(bytes[64:67], byteorder='little', signed=False)
-        seq_num = int.from_bytes(bytes[67:96], byteorder='little', signed=False)
+        source_port = int.from_bytes(bytes[0:16], 'little')
+        destination_port = int.from_bytes(bytes[16:32], 'little')
+        length = int.from_bytes(bytes[32:48], 'little')
+        checksum = int.from_bytes(bytes[48:64], 'little')
+        type = Types(int.from_bytes(bytes[64:67], 'little'))
+        seq_num = int.from_bytes(bytes[67:96], 'little')
         data = bytes[96:]
 
+        ''' TODO check stuff
         if len(bytes) != length:
             return None
 
@@ -97,12 +100,12 @@ class PacketHandler:
         #         return None
 
         # source and destination are reversed in incomming packets
-        if source_port != self.destination_port:
+        if source_port != self.destination_port and self.destination_port is not None:
             return None
         # source and destination are reversed in incomming packets
         if destination_port != self.source_port:
             return None
-
+        '''
         return type, seq_num, data
 
     def unmake(self, bytes):
@@ -111,15 +114,21 @@ class PacketHandler:
             return None
 
         if temp[0] == Types.HANDSHAKE:
-            return temp[0], temp[1], self.unmake_handshake(temp[2])
+            return temp[0], temp[1], *self.unmake_handshake(temp[2])
         else:
             return temp
 
     def unmake_handshake(self, data):
-        data_max_size = int.from_bytes(data[0:16], byteorder='little', signed=False)
-        loss_chance = int.from_bytes(data[16:24], byteorder='little', signed=False)
-        corruption_chance = int.from_bytes(data[24:32], byteorder='little', signed=False)
-        filename = str.from_bytes(data[32:], byteorder='little', signed=False)
+        data_max_size = int.from_bytes(data[0:16], 'little')
+        loss_chance = int.from_bytes(data[16:24], 'little')
+        corruption_chance = int.from_bytes(data[24:32], 'little')
+        filename = data[32:].rstrip(b'\0').decode()
 
         # TODO set corruption_chance
-        return data_max_size, loss_chance, filename
+        return data_max_size, loss_chance, corruption_chance, filename
+
+    def set_destination_port(self, destination_port):
+        self.destination_port = destination_port
+
+    def set_source_port(self, source_port):
+        self.source_port = source_port
