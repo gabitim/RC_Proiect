@@ -57,7 +57,6 @@ class PacketHandler:
         self.data += corruption_chance.to_bytes(8, 'little')
         self.data += filename.encode().ljust(32, b'\0')
 
-
         self.compute_length()
         self.compute_checksum()
 
@@ -114,7 +113,7 @@ class PacketHandler:
             return None
 
         if temp[0] == Types.HANDSHAKE:
-            return temp[0], temp[1], *self.unmake_handshake(temp[2])
+            return temp[0], temp[1], self.unmake_handshake(temp[2])
         else:
             return temp
 
@@ -125,7 +124,7 @@ class PacketHandler:
         filename = data[32:].rstrip(b'\0').decode()
 
         # TODO set corruption_chance
-        return data_max_size, loss_chance, corruption_chance, filename
+        return data_max_size, loss_chance, filename
 
     def set_destination_port(self, destination_port):
         self.destination_port = destination_port
