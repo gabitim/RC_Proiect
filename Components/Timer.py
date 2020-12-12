@@ -20,11 +20,11 @@ class Timer:
             self.start_time = self.TIMER_STOP
 
     # determining whether the timer is running
-    def timer_is_running(self):
+    def running(self):
         return self.start_time != self.TIMER_STOP
 
     def timeout(self):
-        if not self.timer_is_running():
+        if not self.running():
             return False
         else:
             return time.time() - self.start_time >= self.duration
