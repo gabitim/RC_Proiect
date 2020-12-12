@@ -77,7 +77,13 @@ class Sender(threading.Thread):
                     # send the packets from window
                     while last_frame_sent < self.last_ack_received + window_size:
                         last_frame_sent += 1
-                        self.udp.send(PacketHandler.Types.DATA, last_frame_sent, frames[last_frame_sent])
+                        while self.running: # try sending until buffer has space
+                            try:
+                                self.udp.send(PacketHandler.Types.DATA, last_frame_sent, frames[last_frame_sent])
+                                break
+                            except BlockingIOError:
+                                pass
+
                         self.logger.log(LogTypes.SNT, f'Packet {last_frame_sent} sent.')
 
                     # we put this thread to sleep until we have a timeout or we have ack

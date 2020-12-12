@@ -1,4 +1,3 @@
-- try/except for sends (in case bufferoverflow)
 - fix non local host socket closing
 - checks in packethandler / udp
 - checksum
