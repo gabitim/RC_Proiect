@@ -12,11 +12,12 @@ from enums.logtypes import LogTypes
 
 from Components import Logger, \
     PacketHandler, \
-    Udp
+    Udp, \
+    Timer
 
 SEP = os.path.sep
 TRY_NUMBER = 60
-
+TIMEOUT = 5
 
 # receive packets and writes them into filename
 class Receiver(threading.Thread):
@@ -113,7 +114,9 @@ class Receiver(threading.Thread):
         if can_write:
             file.write(data)
 
-        while self.running:  # get the next packet from sender
+        timer = Timer.Timer()
+        timer.start()
+        while self.running and not timer.timeout(): # get the next packet from sender
             try:
                 temp = self.udp.receive()
             except BlockingIOError:
@@ -122,6 +125,7 @@ class Receiver(threading.Thread):
                 self.error('Sender error')
                 break
 
+            timer.restart()
             type, seq_num, data = temp
             if type == PacketHandler.Types.FINISH:
                 break
@@ -130,6 +134,9 @@ class Receiver(threading.Thread):
                 last_frame_received, can_write = self.send_ack(seq_num, last_frame_received)
                 if can_write:
                     file.write(data)
+
+        if timer.timeout():
+            self.error('Timeout reached')
 
     def send_ack(self, packet_number, last_frame_received):
         # if we have the right package send the ack to move the window
@@ -155,17 +162,10 @@ class Receiver(threading.Thread):
         while self.running:
             self.udp.send(PacketHandler.Types.FINISH)
             time.sleep(0.1)
-            try:
-                self.udp.receive()
-            except ConnectionResetError:
-                # we finish normally
+            counter += 1
+            if counter > TRY_NUMBER:
                 break
-            except BlockingIOError:
-                # we finish with error
-                counter = counter + 1
-                if counter > TRY_NUMBER:
-                    self.error('Could not send finish')
-
+                
         if self.running and not self.console_mode:
             dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
 

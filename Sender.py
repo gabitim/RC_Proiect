@@ -20,6 +20,7 @@ from Components import Logger, \
 SEP = os.path.sep
 SLEEP_INTERVAL = 0.05
 TRY_NUMBER = 60
+MAX_TIMEOUTS = 5
 
 
 class Sender(threading.Thread):
@@ -70,6 +71,7 @@ class Sender(threading.Thread):
 
                 # we run until all the packets are delivered
                 last_frame_sent = -1
+                timeout_counter = 0
                 window_size = min(self.WINDOW_SIZE, number_of_frames)
                 while self.running and self.last_ack_received < number_of_frames - 1:
 
@@ -91,12 +93,16 @@ class Sender(threading.Thread):
                         self.check_response()
 
                     if self.timer.timeout():
+                        timeout_counter += 1
+                        if timeout_counter > MAX_TIMEOUTS:
+                            self.error('Max timeouts for the same window reached')
                         self.logger.log(LogTypes.INF, f'Timeout. Resending window.')
                         self.timer.stop()
                         # we send all the packets from window again
                         last_frame_sent = self.last_ack_received
                     else:
                         # if we didnt timeout that means we got a correct ack
+                        timeout_counter = 0
                         window_size = min(self.WINDOW_SIZE, number_of_frames - self.last_ack_received - 1)
 
                 if self.running:  # normal sender execution end

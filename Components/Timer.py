@@ -19,6 +19,9 @@ class Timer:
         if self.start_time != self.TIMER_STOP:
             self.start_time = self.TIMER_STOP
 
+    def restart(self):
+        self.start_time = time.time()
+
     # determining whether the timer is running
     def running(self):
         return self.start_time != self.TIMER_STOP
