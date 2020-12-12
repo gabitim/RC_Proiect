@@ -35,7 +35,7 @@ class PacketHandler:
         self.type = 0
         self.seq_num = 0
         self.data = b''
-        self.handshake_bytes = b''
+        self.corruption_chance = 0
 
     def make(self, type, seq_num=0, data=b''):
         self.type = type
@@ -120,7 +120,7 @@ class PacketHandler:
         corruption_chance = int.from_bytes(data[24:32], 'little')
         filename = data[32:].rstrip(b'\0').decode()
 
-        # TODO set corruption_chance
+        self.set_corruption_chance(corruption_chance)
         return data_max_size, loss_chance, filename
 
     def set_destination_port(self, destination_port):
@@ -128,3 +128,6 @@ class PacketHandler:
 
     def set_source_port(self, source_port):
         self.source_port = source_port
+
+    def set_corruption_chance(self, corruption_chance):
+        self.corruption_chance = corruption_chance
