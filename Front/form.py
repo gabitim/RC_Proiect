@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(818, 678)
+        MainWindow.resize(961, 678)
         font = QtGui.QFont()
         font.setPointSize(16)
         MainWindow.setFont(font)
@@ -107,8 +107,7 @@ class Ui_MainWindow(object):
         self.timeout_value_label.setObjectName("timeout_value_label")
         self.param_page_layout.addWidget(self.timeout_value_label, 5, 2, 1, 1)
         self.path_button = QtWidgets.QPushButton(self.param_page)
-        self.path_button.setMinimumSize(QtCore.QSize(140, 0))
-        self.path_button.setText("")
+        self.path_button.setMinimumSize(QtCore.QSize(170, 0))
         self.path_button.setObjectName("path_button")
         self.param_page_layout.addWidget(self.path_button, 6, 2, 1, 1)
         self.start_button = QtWidgets.QPushButton(self.param_page)
@@ -408,6 +407,7 @@ class Ui_MainWindow(object):
         self.receiver_button.setText(_translate("MainWindow", "Receiver"))
         self.sender_button.setText(_translate("MainWindow", "Sender"))
         self.timeout_value_label.setText(_translate("MainWindow", "500"))
+        self.path_button.setText(_translate("MainWindow", "Choose folder"))
         self.start_button.setText(_translate("MainWindow", "Start"))
         self.packet_loss_chance_value_label.setText(_translate("MainWindow", "0.1"))
         self.packet_size_value_label.setText(_translate("MainWindow", "4096"))
