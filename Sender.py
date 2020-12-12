@@ -22,7 +22,7 @@ ERROR_NUMBER = -1000
 
 SEP = os.path.sep
 SLEEP_INTERVAL = 0.05
-
+TRY_NUMBER = 60
 
 # TO DO DELETE THESE FUCKING GLOBAL VARIABLES
 # global variables
@@ -105,6 +105,7 @@ class Sender(threading.Thread):
 
         self.logger.log(LogTypes.SET, 'Sender has started')
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as self.socket:
+            # self.socket.setblocking(False)
             self.socket.bind(Sender.BIND_ADDRESS)
             self.udp = Udp.Udp(self.socket, Udp.SENDER_PORT, LOG_SIGNAL=self.LOG_SIGNAL)
             self.wait_for_request()
@@ -169,25 +170,51 @@ class Sender(threading.Thread):
         self.running = False
 
     def wait_for_request(self):
+        counter = 0
         while self.running:
-            if self.udp.accept_request():
-                break
+            try:  # try every second during 60 seconds to connect, else terminate
+                if self.udp.accept_request() is True:
+                    break
+            except BlockingIOError:
+                counter = counter + 1
+                print(counter)
+                if counter > TRY_NUMBER:
+                    self.error('No Receiver requests')
+                time.sleep(1)
 
     def handshake(self):
-        self.logger.log(LogTypes.INF, 'Handshake started')
+        if self.running:
+            self.logger.log(LogTypes.INF, 'Handshake started')
 
         last_sep = self.FILENAME.rfind(f'{SEP}')
         '''  SOLVES PROBLEM WITH SEP FROM WINDOWS!!  '''
         last_sep = max(last_sep, self.FILENAME.rfind('/'))
 
-        self.udp.send_handshake(self.DATA_MAX_SIZE,
-                                self.LOSS_CHANCE,
-                                self.CORRUPTION_CHANCE,
-                                self.FILENAME[last_sep + 1:])
-        data = self.udp.receive()
-        self.logger.log(LogTypes.INF, 'Handshake successful')
+        counter = 0
+        while self.running:
+
+            self.udp.send_handshake(self.DATA_MAX_SIZE,
+                                    self.LOSS_CHANCE,
+                                    self.CORRUPTION_CHANCE,
+                                    self.FILENAME[last_sep + 1:])
+            time.sleep(0.1)
+            try:
+                data = self.udp.receive()
+                # TODO confirm handshake received from Receiver
+                break
+            except BlockingIOError:
+                counter = counter + 1
+
+                if counter > TRY_NUMBER:
+                    self.error('Could not send handshake')
+
+        if self.running:
+            self.logger.log(LogTypes.INF, 'Handshake successful')
 
     def read_data(self):
+        if self.running is False:
+            return []
+
         try:
             file = open(self.FILENAME, 'rb')
 
