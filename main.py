@@ -97,6 +97,14 @@ class MainWindow(QMainWindow):
         self.timeout_label.setEnabled(enabled)
         self.timeout_slider.setEnabled(enabled)
         self.timeout_value_label.setEnabled(enabled)
+        self.ip_label.setEnabled(not enabled)
+        self.dot_label_1.setEnabled(not enabled)
+        self.dot_label_2.setEnabled(not enabled)
+        self.dot_label_3.setEnabled(not enabled)
+        self.ip_spin_box_1.setEnabled(not enabled)
+        self.ip_spin_box_2.setEnabled(not enabled)
+        self.ip_spin_box_3.setEnabled(not enabled)
+        self.ip_spin_box_4.setEnabled(not enabled)
 
     def choose_sender(self):
         self.client_mode = MainWindow.SENDER_MODE
@@ -140,8 +148,11 @@ class MainWindow(QMainWindow):
             foldername = self.path_line_edit.text()
             if foldername == '':
                 foldername = '.'
-            # TODO get from edit
-            sender_ip = '127.0.0.1'
+
+            sender_ip = str(self.ip_spin_box_1.value()) + '.' +\
+                        str(self.ip_spin_box_2.value()) + '.' +\
+                        str(self.ip_spin_box_3.value()) + '.' +\
+                        str(self.ip_spin_box_4.value())
             self.worker = Receiver(foldername, sender_ip, self.SIGNALS)
 
         if self.client_mode == MainWindow.SENDER_MODE:
