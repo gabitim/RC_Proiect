@@ -135,9 +135,11 @@ class MainWindow(QMainWindow):
         parameters = []
         parameters += [self.packet_size_slider.value()]
         parameters += [self.window_size_slider.value()]
+        # packet_loss_chance is in % * 10
         parameters += [self.packet_loss_chance_slider.value()]
+        # packet_corruption_chance is in % * 10
         parameters += [self.packet_corruption_chance_slider.value()]
-        # parameter is in seconds
+        # timeout is in seconds
         parameters += [self.timeout_slider.value() / 1000]
         return parameters
 
@@ -205,11 +207,11 @@ class MainWindow(QMainWindow):
 
     def on_packet_loss_chance_change(self):
         newValue = self.packet_loss_chance_slider.value()
-        self.packet_loss_chance_value_label.setText(str(newValue))
+        self.packet_loss_chance_value_label.setText(str(newValue / 10))
 
     def on_packet_corruption_chance_change(self):
         newValue = self.packet_corruption_chance_slider.value()
-        self.packet_corruption_chance_value_label.setText(str(newValue))
+        self.packet_corruption_chance_value_label.setText(str(newValue / 10))
 
     def on_timeout_change(self):
         newValue = self.timeout_slider.value()

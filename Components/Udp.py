@@ -23,14 +23,14 @@ class Udp:
         self.logger = Logger.Logger(LOG_SIGNAL)
 
     def send(self, type, seq_num=0, data=b''):
-        if random.randint(0, 100) <= self.loss_chance:
+        if random.randint(0, 1000) <= self.loss_chance:
             self.logger.log(LogTypes.WRN, 'Packet was lost')
             return
         self.packet_handler.make(type, seq_num, data)
         self.socket.sendto(self.packet_handler.get_bytes(), self.destination_address)
 
     def send_handshake(self, data_max_size, loss_chance, corruption_chance, filename):
-        if random.randint(0, 100) <= self.loss_chance:
+        if random.randint(0, 1000) <= self.loss_chance:
             self.logger.log(LogTypes.WRN, 'Packet was lost')
             return
         self.packet_handler.make_handshake(PacketHandler.Types.HANDSHAKE, data_max_size, loss_chance, corruption_chance, filename)

@@ -20,7 +20,7 @@ TRY_NUMBER = 60
 
 # receive packets and writes them into filename
 class Receiver(threading.Thread):
-    def __init__(self, foldername, sender_ip='127.0.0.1', SIGNALS=None):  # TODO add sender_ip
+    def __init__(self, foldername, sender_ip='127.0.0.1', SIGNALS=None):
         super().__init__()
         self.running = True
         self.sender_address = (sender_ip, Udp.SENDER_PORT)
