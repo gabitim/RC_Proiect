@@ -74,7 +74,8 @@ class Receiver(threading.Thread):
 
             self.udp.send(PacketHandler.Types.REQUEST)
 
-        type, _, self.filename = temp
+        type, _, filename = temp
+        self.filename = self.filename + filename
 
         counter = 0
         first_packet = None
