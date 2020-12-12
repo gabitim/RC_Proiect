@@ -227,7 +227,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1: # console mode
-        #TODO daca e sender -> run sender, receiver -> run receiver
+        # TODO daca e sender -> run sender, receiver -> run receiver
         # handle defaults here!
         # command line params example:
         # 1. path to the file to be sent
