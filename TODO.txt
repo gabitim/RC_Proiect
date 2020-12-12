@@ -1,0 +1,8 @@
+- try/except for error on the other side in run
+- checks in packethandler / udp
+- checksum
+- ip gui
+- extractions
+- big files handling?
+- console?
+- documentation
