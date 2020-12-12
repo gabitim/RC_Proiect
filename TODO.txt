@@ -1,8 +1,9 @@
 - try/except for error on the other side in run
+- try/except for sends (in case bufferoverflow)
+- fix non local host socket closing
 - checks in packethandler / udp
 - checksum
 - ip gui
-- extractions
-- big files handling?
+- extract functions
 - console?
 - documentation
