@@ -1,13 +1,7 @@
 from enum import Enum
-"""
-packet = Packet(date, dimeni)
-
-packet.make_handshake(data)
-
-udp.send(packet)
-"""
 
 '''
+    OUR PACKET STRUCTURE
 --- source port [0-15]
 --- destination port[16-31]
 --- length [32-47]
@@ -16,6 +10,8 @@ udp.send(packet)
 --- seq_num[67-95]
 --- data[96..]
 '''
+
+
 class Types(Enum):
     DATA = 1
     ACK = 2
@@ -25,6 +21,7 @@ class Types(Enum):
 
     def to_bytes(self, length, byteorder, signed=False):
         return self.value.to_bytes(length, byteorder=byteorder, signed=signed)
+
 
 class PacketHandler:
     HEADER_SIZE = 96
@@ -75,7 +72,7 @@ class PacketHandler:
         bytes += self.length.to_bytes(16, 'little')
         bytes += self.checksum.to_bytes(16, 'little')
         bytes += self.type.to_bytes(3, 'little')
-        bytes += self.seq_num.to_bytes(29, 'little')
+        bytes += self.seq_num.to_bytes(29, 'little', signed=True)
         bytes += self.data
 
         return bytes
@@ -86,7 +83,7 @@ class PacketHandler:
         length = int.from_bytes(bytes[32:48], 'little')
         checksum = int.from_bytes(bytes[48:64], 'little')
         type = Types(int.from_bytes(bytes[64:67], 'little'))
-        seq_num = int.from_bytes(bytes[67:96], 'little')
+        seq_num = int.from_bytes(bytes[67:96], 'little', signed=True)
         data = bytes[96:]
 
         ''' TODO check stuff
@@ -113,7 +110,7 @@ class PacketHandler:
             return None
 
         if temp[0] == Types.HANDSHAKE:
-            return temp[0], temp[1], self.unmake_handshake(temp[2])
+            return temp[0], temp[1], *self.unmake_handshake(temp[2])
         else:
             return temp
 

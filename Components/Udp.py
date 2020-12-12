@@ -58,7 +58,7 @@ class Udp:
     def receive(self):
         bytes, address = self.socket.recvfrom(self.buffer_size)
         # source and destination are reversed in incomming packets
-        if address != self.destination_address or bytes is None:
+        if address != self.destination_address or bytes is None or bytes == b'':
             return None
         temp = self.packet_handler.unmake(bytes)
         if temp is None:

@@ -1,10 +1,8 @@
 # tests
-receive/
-SAVEDFILE.jpg
+receive_test/
 
 # from Gabi
 .idea/
-tests/
 
 # Documentatie
 DocumentatieRCP.synctex.gz

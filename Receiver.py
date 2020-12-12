@@ -17,9 +17,10 @@ from Components import Logger, \
 SEP = os.path.sep
 TRY_NUMBER = 60
 
+
 # receive packets and writes them into filename
 class Receiver(threading.Thread):
-    def __init__(self, foldername, sender_ip='127.0.0.1', SIGNALS=None): # TODO add sender_ip
+    def __init__(self, foldername, sender_ip='127.0.0.1', SIGNALS=None):  # TODO add sender_ip
         super().__init__()
         self.running = True
         self.sender_address = (sender_ip, Udp.SENDER_PORT)
@@ -33,6 +34,7 @@ class Receiver(threading.Thread):
             self.LOG_SIGNAL = None
         else:
             self.console_mode = False
+
             # [LOG_SIGNAL, FINISH_SIGNAL]
             self.SIGNALS = SIGNALS
             self.LOG_SIGNAL = self.SIGNALS[0]
@@ -47,10 +49,11 @@ class Receiver(threading.Thread):
             self.socket.setblocking(False)
             # socket does not have an address yet, so init with port 0
             self.udp = Udp.Udp(self.socket, 0, self.sender_address, self.LOG_SIGNAL)
-            self.handshake()
+            first_packet = self.handshake()
 
-            with open(self.filename, 'wb') as file:
-                self.receive_packets(file)
+            if self.running:
+                with open(self.filename, 'wb') as file:
+                    self.receive_packets(file, first_packet)
 
             if self.running:
                 self.finish()
@@ -62,20 +65,21 @@ class Receiver(threading.Thread):
         self.udp.update_source_port()
         counter = 0
         while self.running:
-            time.sleep(0.1)
+            time.sleep(1)
             try:
                 temp = self.udp.receive()
                 if temp[0] == PacketHandler.Types.HANDSHAKE:
                     break
-            except BlockingIOError:
+            except (BlockingIOError, ConnectionResetError):
                 counter = counter + 1
                 if counter > TRY_NUMBER:
                     self.error('Did not receive Handshake')
 
             self.udp.send(PacketHandler.Types.REQUEST)
 
-        type, _, filename = temp
-        self.filename = self.filename + filename
+        if self.running:
+            type, _, filename = temp
+            self.filename = self.filename + filename
 
         counter = 0
         first_packet = None
@@ -96,11 +100,20 @@ class Receiver(threading.Thread):
             self.logger.log(LogTypes.INF, 'Handshake successful')
         return first_packet
 
-    def receive_packets(self, file):
+    def receive_packets(self, file, first_packet):
         last_frame_received = -1
 
+        type, seq_num, data = first_packet
+        self.logger.log(LogTypes.RCV, f'Packet {seq_num} received.')
+        last_frame_received, can_write = self.send_ack(seq_num, last_frame_received)
+        if can_write:
+            file.write(data)
+
         while self.running:  # get the next packet from sender
-            temp = self.udp.receive()
+            try:
+                temp = self.udp.receive()
+            except BlockingIOError:
+                continue
             if not temp:
                 self.error('Sender error')
                 break
@@ -132,17 +145,19 @@ class Receiver(threading.Thread):
             return last_frame_received, False
 
     def finish(self):
-        self.logger.log(LogTypes.SET, 'All packets sent. Shutting down.')
+        self.logger.log(LogTypes.SET, 'All packets received. Shutting down.')
 
         counter = 0
         while self.running:
             self.udp.send(PacketHandler.Types.FINISH)
             time.sleep(0.1)
             try:
-                temp = self.udp.receive()
-                if temp is None:
-                    break
+                self.udp.receive()
+            except ConnectionResetError:
+                # we finish normally
+                break
             except BlockingIOError:
+                # we finish with error
                 counter = counter + 1
                 if counter > TRY_NUMBER:
                     self.error('Could not send finish')
@@ -158,6 +173,7 @@ class Receiver(threading.Thread):
         if not self.console_mode:
             dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
         self.terminate()
+
 
 def run_receiver(foldername):
     receiver = Receiver(foldername)
