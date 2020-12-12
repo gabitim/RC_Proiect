@@ -68,8 +68,7 @@ class Udp:
         else:
             self.update_buffer_size(temp[2] + self.packet_handler.HEADER_SIZE)
             self.set_loss_chance(temp[3])
-
-            return temp
+            return temp[0], temp[1], temp[4]
 
     def update_source_port(self):
         source_port = self.socket.getsockname()[1]

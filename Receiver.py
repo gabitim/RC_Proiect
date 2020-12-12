@@ -15,6 +15,7 @@ from Components import Logger, \
     Udp
 
 SEP = os.path.sep
+TRY_NUMBER = 60
 
 # receive packets and writes them into filename
 class Receiver(threading.Thread):
@@ -43,44 +44,56 @@ class Receiver(threading.Thread):
         self.logger.log(LogTypes.SET, 'Receiver has started')
 
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as self.socket:
+            self.socket.setblocking(False)
             # socket does not have an address yet, so init with port 0
             self.udp = Udp.Udp(self.socket, 0, self.sender_address, self.LOG_SIGNAL)
             self.handshake()
 
-            # try open, or create the file for writing
             with open(self.filename, 'wb') as file:
                 self.receive_packets(file)
 
-            if self.running: # normal receiver execution end
-                # TODO keep sending until recv thread joins
-                self.udp.send(PacketHandler.Types.FINISH)
-                temp = self.udp.receive()
-                self.logger.log(LogTypes.SET, 'All packets received. Shutting down.')
-                if not self.console_mode:
-                    dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
-
-    def terminate(self):
-        self.running = False
-
-    def error(self, message):
-        self.logger.log(LogTypes.ERR, message)
-        if not self.console_mode:
-            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
-        self.terminate()
+            if self.running:
+                self.finish()
 
     def handshake(self):
+        if self.running:
+            self.logger.log(LogTypes.INF, 'Handshake started')
         self.udp.send(PacketHandler.Types.REQUEST)
         self.udp.update_source_port()
-        temp = self.udp.receive()
-        if temp is None:
-            pass # TODO
+        counter = 0
+        while self.running:
+            time.sleep(0.1)
+            try:
+                temp = self.udp.receive()
+                if temp[0] == PacketHandler.Types.HANDSHAKE:
+                    break
+            except BlockingIOError:
+                counter = counter + 1
+                if counter > TRY_NUMBER:
+                    self.error('Did not receive Handshake')
 
-        type, _, DATA_MAX_SIZE, LOSS_CHANCE, CORRUPTION_CHANCE, self.filename = temp
-        if type != PacketHandler.Types.HANDSHAKE:
-            pass # TODO
-        # TODO what should be sent?
-        self.udp.send_handshake(DATA_MAX_SIZE, LOSS_CHANCE, CORRUPTION_CHANCE, self.filename)
-        self.logger.log(LogTypes.INF, 'Handshake successful')
+            self.udp.send(PacketHandler.Types.REQUEST)
+
+        type, _, self.filename = temp
+
+        counter = 0
+        first_packet = None
+        while self.running:
+            self.udp.send(PacketHandler.Types.HANDSHAKE)
+            time.sleep(0.1)
+            try:
+                data = self.udp.receive()
+                if data[0] == PacketHandler.Types.DATA:
+                    first_packet = data
+                    break
+            except BlockingIOError:
+                counter = counter + 1
+                if counter > TRY_NUMBER:
+                    self.error('Could not send handshake')
+
+        if self.running:
+            self.logger.log(LogTypes.INF, 'Handshake successful')
+        return first_packet
 
     def receive_packets(self, file):
         last_frame_received = -1
@@ -117,6 +130,34 @@ class Receiver(threading.Thread):
 
             return last_frame_received, False
 
+    def finish(self):
+        self.logger.log(LogTypes.SET, 'All packets sent. Shutting down.')
+
+        counter = 0
+        while self.running:
+            self.udp.send(PacketHandler.Types.FINISH)
+            time.sleep(0.1)
+            try:
+                temp = self.udp.receive()
+                if temp is None:
+                    break
+            except BlockingIOError:
+                counter = counter + 1
+                if counter > TRY_NUMBER:
+                    self.error('Could not send finish')
+
+        if self.running and not self.console_mode:
+            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
+
+    def terminate(self):
+        self.running = False
+
+    def error(self, message):
+        self.logger.log(LogTypes.ERR, message)
+        if not self.console_mode:
+            dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.ERROR)
+        self.terminate()
+
 def run_receiver(foldername):
     receiver = Receiver(foldername)
     receiver.run()
@@ -128,15 +169,3 @@ if __name__ == '__main__':
     foldername = f"test"
 
     run_receiver(foldername)
-
-''' TODO example
-while self.running:
-    counter = 0
-    try: # try every second during 60 seconds to connect, else terminate
-        self.socket.connec(SENDER_ADDRESS)
-    except:
-        counter = counter + 1
-        if counter > 60:
-            self.error('Could not connect to a Sender')
-        time.sleep(1)
-'''
