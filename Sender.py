@@ -69,10 +69,10 @@ class Sender(threading.Thread):
                 # we run until all the packets are delivered
                 self.last_ack_received = -1
                 last_frame_sent = -1
-                SEND_TIMEOUT = 0.05
+                SEND_TIMEOUT = 0.2
                 self.timer = Timer.Timer(SEND_TIMEOUT)
                 timeout_counter = 0
-                MAX_TIMEOUTS = 10
+                MAX_TIMEOUTS = 50
                 window_size = min(self.WINDOW_SIZE, number_of_frames)
                 while self.running and self.last_ack_received < number_of_frames - 1:
 
@@ -94,13 +94,14 @@ class Sender(threading.Thread):
                         self.check_response()
 
                     if self.timer.timeout():
-                        timeout_counter += 1
-                        if timeout_counter > MAX_TIMEOUTS:
-                            self.error('Max timeouts for the same window reached')
                         self.logger.log(LogTypes.INF, f'Timeout. Resending window.')
                         self.timer.stop()
                         # we send all the packets from window again
                         last_frame_sent = self.last_ack_received
+                        
+                        timeout_counter += 1
+                        if timeout_counter > MAX_TIMEOUTS:
+                            self.error('Max timeouts for the same window reached')
                     else:
                         # if we didnt timeout that means we got a correct ack
                         timeout_counter = 0
@@ -114,15 +115,17 @@ class Sender(threading.Thread):
 
     def wait_for_request(self):
         counter = 0
+        REQUEST_TRIES = 60
+        REQUEST_SLEEP_TIME = 1
         while self.running:
             try:  # try every second during 60 seconds to connect, else terminate
                 if self.udp.accept_request():
                     break
             except BlockingIOError:
                 counter = counter + 1
-                if counter > TRY_NUMBER:
+                if counter > REQUEST_TRIES:
                     self.error('No Receiver requests')
-                time.sleep(1)
+                time.sleep(REQUEST_SLEEP_TIME)
 
     def handshake(self):
         if self.running:

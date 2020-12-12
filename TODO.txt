@@ -1,4 +1,3 @@
-- fix non local host socket closing
 - checks in packethandler / udp
 - checksum
 - extract functions
