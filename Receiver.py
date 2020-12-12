@@ -49,14 +49,18 @@ class Receiver(threading.Thread):
             self.socket.setblocking(False)
             # socket does not have an address yet, so init with port 0
             self.udp = Udp.Udp(self.socket, 0, self.sender_address, self.LOG_SIGNAL)
-            first_packet = self.handshake()
+            try:
+                first_packet = self.handshake()
 
-            if self.running:
-                with open(self.filename, 'wb') as file:
-                    self.receive_packets(file, first_packet)
+                if self.running:
+                    with open(self.filename, 'wb') as file:
+                        self.receive_packets(file, first_packet)
 
-            if self.running:
-                self.finish()
+                if self.running:
+                    self.finish()
+
+            except ConnectionResetError:
+                self.error('Sender-side error')
 
     def handshake(self):
         if self.running:

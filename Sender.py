@@ -62,38 +62,42 @@ class Sender(threading.Thread):
             self.socket.setblocking(False)
             self.socket.bind(Sender.BIND_ADDRESS)
             self.udp = Udp.Udp(self.socket, Udp.SENDER_PORT, LOG_SIGNAL=self.LOG_SIGNAL)
-            self.wait_for_request()
-            self.handshake()
-            frames = self.read_data()
-            number_of_frames = len(frames)
+            try:
+                self.wait_for_request()
+                self.handshake()
+                frames = self.read_data()
+                number_of_frames = len(frames)
 
-            # we run until all the packets are delivered
-            last_frame_sent = -1
-            window_size = min(self.WINDOW_SIZE, number_of_frames)
-            while self.running and self.last_ack_received < number_of_frames - 1:
+                # we run until all the packets are delivered
+                last_frame_sent = -1
+                window_size = min(self.WINDOW_SIZE, number_of_frames)
+                while self.running and self.last_ack_received < number_of_frames - 1:
 
-                self.timer.start()
-                # send the packets from window
-                while last_frame_sent < self.last_ack_received + window_size:
-                    last_frame_sent += 1
-                    self.udp.send(PacketHandler.Types.DATA, last_frame_sent, frames[last_frame_sent])
-                    self.logger.log(LogTypes.SNT, f'Packet {last_frame_sent} sent.')
+                    self.timer.start()
+                    # send the packets from window
+                    while last_frame_sent < self.last_ack_received + window_size:
+                        last_frame_sent += 1
+                        self.udp.send(PacketHandler.Types.DATA, last_frame_sent, frames[last_frame_sent])
+                        self.logger.log(LogTypes.SNT, f'Packet {last_frame_sent} sent.')
 
-                # we put this thread to sleep until we have a timeout or we have ack
-                while not self.timer.timeout() and self.timer.running():
-                    self.check_response()
+                    # we put this thread to sleep until we have a timeout or we have ack
+                    while not self.timer.timeout() and self.timer.running():
+                        self.check_response()
 
-                if self.timer.timeout():
-                    self.logger.log(LogTypes.INF, f'Timeout. Resending window.')
-                    self.timer.stop()
-                    # we send all the packets from window again
-                    last_frame_sent = self.last_ack_received
-                else:
-                    # if we didnt timeout that means we got a correct ack
-                    window_size = min(self.WINDOW_SIZE, number_of_frames - self.last_ack_received - 1)
+                    if self.timer.timeout():
+                        self.logger.log(LogTypes.INF, f'Timeout. Resending window.')
+                        self.timer.stop()
+                        # we send all the packets from window again
+                        last_frame_sent = self.last_ack_received
+                    else:
+                        # if we didnt timeout that means we got a correct ack
+                        window_size = min(self.WINDOW_SIZE, number_of_frames - self.last_ack_received - 1)
 
-            if self.running:  # normal sender execution end
-                self.finish()
+                if self.running:  # normal sender execution end
+                    self.finish()
+
+            except ConnectionResetError:
+                self.error('Receiver-side error')
 
     def wait_for_request(self):
         counter = 0
