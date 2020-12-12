@@ -18,9 +18,6 @@ from Components import Logger, \
     Udp
 
 SEP = os.path.sep
-SLEEP_INTERVAL = 0.05
-TRY_NUMBER = 60
-MAX_TIMEOUTS = 5
 
 
 class Sender(threading.Thread):
@@ -53,7 +50,7 @@ class Sender(threading.Thread):
 
         self.logger = Logger.Logger(self.LOG_SIGNAL)
 
-        self.timer = Timer.Timer()
+        self.timer = None
         self.last_ack_received = -1
 
     def run(self):
@@ -70,8 +67,12 @@ class Sender(threading.Thread):
                 number_of_frames = len(frames)
 
                 # we run until all the packets are delivered
+                self.last_ack_received = -1
                 last_frame_sent = -1
+                SEND_TIMEOUT = 0.05
+                self.timer = Timer.Timer(SEND_TIMEOUT)
                 timeout_counter = 0
+                MAX_TIMEOUTS = 10
                 window_size = min(self.WINDOW_SIZE, number_of_frames)
                 while self.running and self.last_ack_received < number_of_frames - 1:
 
@@ -132,13 +133,15 @@ class Sender(threading.Thread):
         last_sep = max(last_sep, self.FILENAME.rfind('/'))
 
         counter = 0
+        HANDSHAKE_TRIES = 60
+        HANDSHAKE_SLEEP_TIME = 0.1
         while self.running:
 
             self.udp.send_handshake(self.DATA_MAX_SIZE,
                                     self.LOSS_CHANCE,
                                     self.CORRUPTION_CHANCE,
                                     self.FILENAME[last_sep + 1:])
-            time.sleep(0.1)
+            time.sleep(HANDSHAKE_SLEEP_TIME)
             try:
                 data = self.udp.receive()
                 if data[0] == PacketHandler.Types.HANDSHAKE:
@@ -146,7 +149,7 @@ class Sender(threading.Thread):
             except BlockingIOError:
                 counter = counter + 1
 
-                if counter > TRY_NUMBER:
+                if counter > HANDSHAKE_TRIES:
                     self.error('Could not send handshake')
 
         if self.running:
@@ -201,10 +204,12 @@ class Sender(threading.Thread):
         self.logger.log(LogTypes.SET, 'All packets sent. Shutting down.')
 
         counter = 0
+        FINISH_TRIES = 40
+        FINISH_SLEEP_TIME = 0.1
         while self.running:
 
             self.udp.send(PacketHandler.Types.FINISH)
-            time.sleep(0.1)
+            time.sleep(FINISH_SLEEP_TIME)
             try:
                 temp = self.udp.receive()
                 if temp[0] == PacketHandler.Types.FINISH:
@@ -212,7 +217,7 @@ class Sender(threading.Thread):
             except BlockingIOError:
                 counter = counter + 1
 
-                if counter > TRY_NUMBER:
+                if counter > FINISH_TRIES:
                     self.error('Could not send finish')
 
         if self.running and not self.console_mode:

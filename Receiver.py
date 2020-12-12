@@ -16,8 +16,6 @@ from Components import Logger, \
     Timer
 
 SEP = os.path.sep
-TRY_NUMBER = 60
-TIMEOUT = 5
 
 # receive packets and writes them into filename
 class Receiver(threading.Thread):
@@ -68,16 +66,19 @@ class Receiver(threading.Thread):
             self.logger.log(LogTypes.INF, 'Handshake started')
         self.udp.send(PacketHandler.Types.REQUEST)
         self.udp.update_source_port()
+
         counter = 0
+        HANDSHAKE_TRIES = 60
+        HANDSHAKE_SLEEP_TIME = 1
         while self.running:
-            time.sleep(1)
+            time.sleep(HANDSHAKE_SLEEP_TIME)
             try:
                 temp = self.udp.receive()
                 if temp[0] == PacketHandler.Types.HANDSHAKE:
                     break
             except (BlockingIOError, ConnectionResetError):
                 counter = counter + 1
-                if counter > TRY_NUMBER:
+                if counter > HANDSHAKE_TRIES:
                     self.error('Did not receive Handshake')
 
             self.udp.send(PacketHandler.Types.REQUEST)
@@ -87,10 +88,12 @@ class Receiver(threading.Thread):
             self.filename = self.filename + filename
 
         counter = 0
+        HANDSHAKE_ACK_TRIES = 20
+        HANDSHAKE_ACK_SLEEP_TIME = 0.1
         first_packet = None
         while self.running:
             self.udp.send(PacketHandler.Types.HANDSHAKE)
-            time.sleep(0.1)
+            time.sleep(HANDSHAKE_ACK_SLEEP_TIME)
             try:
                 data = self.udp.receive()
                 if data[0] == PacketHandler.Types.DATA:
@@ -98,7 +101,7 @@ class Receiver(threading.Thread):
                     break
             except BlockingIOError:
                 counter = counter + 1
-                if counter > TRY_NUMBER:
+                if counter > HANDSHAKE_ACK_TRIES:
                     self.error('Could not send handshake')
 
         if self.running:
@@ -114,7 +117,8 @@ class Receiver(threading.Thread):
         if can_write:
             file.write(data)
 
-        timer = Timer.Timer()
+        RECEIVE_TIMEOUT = 10
+        timer = Timer.Timer(RECEIVE_TIMEOUT)
         timer.start()
         while self.running and not timer.timeout(): # get the next packet from sender
             try:
@@ -159,13 +163,15 @@ class Receiver(threading.Thread):
         self.logger.log(LogTypes.SET, 'All packets received. Shutting down.')
 
         counter = 0
+        FINISH_TRIES = 20
+        FINISH_SLEEP_TIME = 0.1
         while self.running:
             self.udp.send(PacketHandler.Types.FINISH)
-            time.sleep(0.1)
+            time.sleep(FINISH_SLEEP_TIME)
             counter += 1
-            if counter > TRY_NUMBER:
+            if counter > FINISH_TRIES:
                 break
-                
+
         if self.running and not self.console_mode:
             dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
 
