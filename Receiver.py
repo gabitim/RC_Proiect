@@ -47,7 +47,7 @@ class Receiver(threading.Thread):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as self.socket:
             self.socket.setblocking(False)
             # socket does not have an address yet, so init with port 0
-            self.udp = Udp.Udp(self.socket, 0, self.sender_address, self.LOG_SIGNAL)
+            self.udp = Udp.Udp(self.socket, 0, self.sender_address, LOG_SIGNAL=self.LOG_SIGNAL)
             try:
                 first_packet = self.handshake()
 
@@ -92,7 +92,7 @@ class Receiver(threading.Thread):
         HANDSHAKE_ACK_SLEEP_TIME = 0.1
         first_packet = None
         while self.running:
-            self.udp.send(PacketHandler.Types.HANDSHAKE)
+            self.udp.send(PacketHandler.Types.ACK, -1)
             time.sleep(HANDSHAKE_ACK_SLEEP_TIME)
             try:
                 data = self.udp.receive()

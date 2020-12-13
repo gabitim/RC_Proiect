@@ -10,15 +10,18 @@ SENDER_PORT = 24450
 
 
 class Udp:
-    def __init__(self, socket, source_port, destination_address=None, LOG_SIGNAL=None):
+    def __init__(self, socket, source_port, destination_address=None, LOSS_CHANCE=0, CORRUPTION_CHANCE=0, DATA_MAX_SIZE=-1, LOG_SIGNAL=None):
         self.socket = socket
         self.destination_address = destination_address
         destination_port = destination_address[1] if destination_address is not None else None
-        self.packet_handler = PacketHandler.PacketHandler(source_port, destination_port)
+        self.packet_handler = PacketHandler.PacketHandler(source_port, destination_port, CORRUPTION_CHANCE)
 
-        self.loss_chance = 0
-        self.buffer_size = 0
-        self.update_buffer_size(self.packet_handler.HEADER_SIZE + self.packet_handler.HANDSHAKE_SIZE)
+        self.loss_chance = LOSS_CHANCE
+        if DATA_MAX_SIZE >= 0:
+            self.buffer_size = DATA_MAX_SIZE
+        else:
+            self.buffer_size = 0
+            self.update_buffer_size(self.packet_handler.HEADER_SIZE + self.packet_handler.HANDSHAKE_SIZE)
 
         self.logger = Logger.Logger(LOG_SIGNAL)
 
@@ -58,7 +61,7 @@ class Udp:
     def receive(self):
         bytes, address = self.socket.recvfrom(self.buffer_size)
         # source and destination are reversed in incomming packets
-        if address != self.destination_address or bytes is None or bytes == b'':
+        if address != self.destination_address or bytes is None:
             return None
         temp = self.packet_handler.unmake(bytes)
         if temp is None:

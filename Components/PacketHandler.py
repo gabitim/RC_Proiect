@@ -27,7 +27,7 @@ class PacketHandler:
     HEADER_SIZE = 96
     HANDSHAKE_SIZE = 64
 
-    def __init__(self, source_port, destination_port):
+    def __init__(self, source_port, destination_port, CORRUPTION_CHANCE):
         self.source_port = source_port
         self.destination_port = destination_port
         self.length = 0
@@ -35,7 +35,7 @@ class PacketHandler:
         self.type = 0
         self.seq_num = 0
         self.data = b''
-        self.corruption_chance = 0
+        self.corruption_chance = CORRUPTION_CHANCE
 
     def make(self, type, seq_num=0, data=b''):
         self.type = type

@@ -59,7 +59,12 @@ class Sender(threading.Thread):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as self.socket:
             self.socket.setblocking(False)
             self.socket.bind(Sender.BIND_ADDRESS)
-            self.udp = Udp.Udp(self.socket, Udp.SENDER_PORT, LOG_SIGNAL=self.LOG_SIGNAL)
+            self.udp = Udp.Udp(self.socket,
+                                Udp.SENDER_PORT,
+                                LOSS_CHANCE=self.LOSS_CHANCE,
+                                CORRUPTION_CHANCE=self.CORRUPTION_CHANCE,
+                                DATA_MAX_SIZE=self.DATA_MAX_SIZE,
+                                LOG_SIGNAL=self.LOG_SIGNAL)
             try:
                 self.wait_for_request()
                 self.handshake()
@@ -146,7 +151,7 @@ class Sender(threading.Thread):
             time.sleep(HANDSHAKE_SLEEP_TIME)
             try:
                 data = self.udp.receive()
-                if data[0] == PacketHandler.Types.HANDSHAKE:
+                if data[0] == PacketHandler.Types.ACK:
                     break
             except BlockingIOError:
                 counter = counter + 1
@@ -220,7 +225,7 @@ class Sender(threading.Thread):
                 counter = counter + 1
 
                 if counter > FINISH_TRIES:
-                    self.error('Could not send finish')
+                    self.error('Did not get finish confirmation. Receiver may be still open')
 
         if self.running and not self.console_mode:
             dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)
