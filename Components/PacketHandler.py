@@ -68,54 +68,61 @@ class PacketHandler:
         self.length = len(self.data) + self.HEADER_SIZE
 
     def compute_checksum(self):
-        ''' simulate wrong checksum!! '''
-        if random.randint(0, 1000) <= self.corruption_chance:
-            self.checksum = int(zlib.crc32(b'simulate worng checksum'))
-        self.checksum = int(zlib.crc32(self.data))
-        # print(self.checksum)
+        packet_bytes = self.get_bytes()
+        self.checksum = zlib.crc32(packet_bytes[:48] + packet_bytes[64:])
 
     def get_type(self):
         return self.type
 
     def get_bytes(self):
-        bytes = self.source_port.to_bytes(16, 'little')
-        bytes += self.destination_port.to_bytes(16, 'little')
-        bytes += self.length.to_bytes(16, 'little')
-        bytes += self.checksum.to_bytes(16, 'little')
-        bytes += self.type.to_bytes(3, 'little')
-        bytes += self.seq_num.to_bytes(29, 'little', signed=True)
-        bytes += self.data
+        packet_bytes = self.source_port.to_bytes(16, 'little')
+        packet_bytes += self.destination_port.to_bytes(16, 'little')
+        packet_bytes += self.length.to_bytes(16, 'little')
+        packet_bytes += self.checksum.to_bytes(16, 'little')
+        packet_bytes += self.type.to_bytes(3, 'little')
+        packet_bytes += self.seq_num.to_bytes(29, 'little', signed=True)
+        packet_bytes += self.data
 
-        return bytes
+        ''' simulate wrong checksum!! '''
+        if random.randint(0, 1000) <= self.corruption_chance:
+            corrupted_byte = random.randint(0, len(packet_bytes))
+            bytes_list = list(packet_bytes)
+            bytes_list[corrupted_byte] += 1
+            packet_bytes = bytes(bytes_list)
 
-    def decode(self, bytes):
-        source_port = int.from_bytes(bytes[0:16], 'little')
-        destination_port = int.from_bytes(bytes[16:32], 'little')
-        length = int.from_bytes(bytes[32:48], 'little')
-        checksum = int.from_bytes(bytes[48:64], 'little')
-        type = Types(int.from_bytes(bytes[64:67], 'little'))
-        seq_num = int.from_bytes(bytes[67:96], 'little', signed=True)
-        data = bytes[96:]
+        return packet_bytes
+
+    def decode(self, packet_bytes):
+        source_port = int.from_bytes(packet_bytes[0:16], 'little')
+        destination_port = int.from_bytes(packet_bytes[16:32], 'little')
+        length = int.from_bytes(packet_bytes[32:48], 'little')
+        checksum = int.from_bytes(packet_bytes[48:64], 'little')
+        type = Types(int.from_bytes(packet_bytes[64:67], 'little'))
+        seq_num = int.from_bytes(packet_bytes[67:96], 'little', signed=True)
+        data = packet_bytes[96:]
 
         ''' Check Packet Integrity '''
         # source and destination are reversed in incomming packets
         if source_port != self.destination_port and self.destination_port is not None:
+            self.logger.log(LogTypes.WRN, 'Packet has wrong source port')
             return None
         # source and destination are reversed in incomming packets
         if destination_port != self.source_port:
+            self.logger.log(LogTypes.WRN, 'Packet has wrong destination port')
             return None
 
-        if len(bytes) != length:
+        if len(packet_bytes) != length:
+            self.logger.log(LogTypes.WRN, 'Packet has wrong length')
             return None
 
-        if checksum != int(zlib.crc32(self.data)):
+        if checksum != zlib.crc32(packet_bytes[:48] + packet_bytes[64:]):
             self.logger.log(LogTypes.WRN, 'Packet was corrupted')
             return None
 
         return type, seq_num, data
 
-    def unmake(self, bytes):
-        temp = self.decode(bytes)
+    def unmake(self, packet_bytes):
+        temp = self.decode(packet_bytes)
         if temp is None:
             return None
 
@@ -141,5 +148,3 @@ class PacketHandler:
 
     def set_corruption_chance(self, corruption_chance):
         self.corruption_chance = corruption_chance
-
-

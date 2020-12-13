@@ -46,10 +46,10 @@ class Udp:
         self.buffer_size = buffer_size + 4
 
     def accept_request(self):
-        bytes, address = self.socket.recvfrom(self.buffer_size)
-        if bytes is None:
+        packet_bytes, address = self.socket.recvfrom(self.buffer_size)
+        if packet_bytes is None:
             return False
-        temp = self.packet_handler.unmake(bytes)
+        temp = self.packet_handler.unmake(packet_bytes)
         if temp is None or temp[0] != PacketHandler.Types.REQUEST:
             return False
 
@@ -59,11 +59,11 @@ class Udp:
 
     # Receiving a packet with UDP
     def receive(self):
-        bytes, address = self.socket.recvfrom(self.buffer_size)
+        packet_bytes, address = self.socket.recvfrom(self.buffer_size)
         # source and destination are reversed in incomming packets
-        if address != self.destination_address or bytes is None:
+        if address != self.destination_address or packet_bytes is None:
             return None
-        temp = self.packet_handler.unmake(bytes)
+        temp = self.packet_handler.unmake(packet_bytes)
         if temp is None:
             return None
         elif temp[0] != PacketHandler.Types.HANDSHAKE:
