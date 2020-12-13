@@ -80,7 +80,6 @@ class Sender(threading.Thread):
                 window_size = min(self.WINDOW_SIZE, number_of_frames)
                 while self.running and self.last_ack_received < number_of_frames - 1:
 
-                    self.timer.start()
                     # send the packets from window
                     while last_frame_sent < self.last_ack_received + window_size:
                         last_frame_sent += 1
@@ -93,7 +92,8 @@ class Sender(threading.Thread):
 
                         self.logger.log(LogTypes.SNT, f'Packet {last_frame_sent} sent.')
 
-                    # we put this thread to sleep until we have a timeout or we have ack
+                    self.timer.start()
+										
                     while not self.timer.timeout() and self.timer.running():
                         self.check_response()
 
