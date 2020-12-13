@@ -14,7 +14,7 @@ class Udp:
         self.socket = socket
         self.destination_address = destination_address
         destination_port = destination_address[1] if destination_address is not None else None
-        self.packet_handler = PacketHandler.PacketHandler(source_port, destination_port, CORRUPTION_CHANCE)
+        self.packet_handler = PacketHandler.PacketHandler(source_port, destination_port, CORRUPTION_CHANCE, LOG_SIGNAL)
 
         self.loss_chance = LOSS_CHANCE
         if DATA_MAX_SIZE >= 0:

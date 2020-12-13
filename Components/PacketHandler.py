@@ -1,4 +1,9 @@
 from enum import Enum
+import random
+import zlib
+
+from Components import Logger
+from enums.logtypes import LogTypes
 
 '''
     OUR PACKET STRUCTURE
@@ -27,7 +32,7 @@ class PacketHandler:
     HEADER_SIZE = 96
     HANDSHAKE_SIZE = 64
 
-    def __init__(self, source_port, destination_port, CORRUPTION_CHANCE):
+    def __init__(self, source_port, destination_port, CORRUPTION_CHANCE, LOG_SIGNAL=None):
         self.source_port = source_port
         self.destination_port = destination_port
         self.length = 0
@@ -36,6 +41,8 @@ class PacketHandler:
         self.seq_num = 0
         self.data = b''
         self.corruption_chance = CORRUPTION_CHANCE
+
+        self.logger = Logger.Logger(LOG_SIGNAL)
 
     def make(self, type, seq_num=0, data=b''):
         self.type = type
@@ -61,7 +68,11 @@ class PacketHandler:
         self.length = len(self.data) + self.HEADER_SIZE
 
     def compute_checksum(self):
-        pass
+        ''' simulate wrong checksum!! '''
+        if random.randint(0, 1000) <= self.corruption_chance:
+            self.checksum = int(zlib.crc32(b'simulate worng checksum'))
+        self.checksum = int(zlib.crc32(self.data))
+        # print(self.checksum)
 
     def get_type(self):
         return self.type
@@ -86,22 +97,21 @@ class PacketHandler:
         seq_num = int.from_bytes(bytes[67:96], 'little', signed=True)
         data = bytes[96:]
 
-        ''' TODO check stuff
-        if len(bytes) != length:
-            return None
-
-        # TODO hex(zlib.crc32(b'hello-world'))
-        # compute checksum !!
-        # if checksum != compute_checksum(bytes):
-        #         return None
-
+        ''' Check Packet Integrity '''
         # source and destination are reversed in incomming packets
         if source_port != self.destination_port and self.destination_port is not None:
             return None
         # source and destination are reversed in incomming packets
         if destination_port != self.source_port:
             return None
-        '''
+
+        if len(bytes) != length:
+            return None
+
+        if checksum != int(zlib.crc32(self.data)):
+            self.logger.log(LogTypes.WRN, 'Packet was corrupted')
+            return None
+
         return type, seq_num, data
 
     def unmake(self, bytes):
@@ -131,3 +141,5 @@ class PacketHandler:
 
     def set_corruption_chance(self, corruption_chance):
         self.corruption_chance = corruption_chance
+
+

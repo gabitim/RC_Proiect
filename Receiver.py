@@ -74,7 +74,7 @@ class Receiver(threading.Thread):
             time.sleep(HANDSHAKE_SLEEP_TIME)
             try:
                 temp = self.udp.receive()
-                if temp[0] == PacketHandler.Types.HANDSHAKE:
+                if temp is not None and temp[0] == PacketHandler.Types.HANDSHAKE:
                     break
             except (BlockingIOError, ConnectionResetError):
                 counter = counter + 1
