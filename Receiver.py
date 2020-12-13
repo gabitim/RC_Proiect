@@ -52,8 +52,12 @@ class Receiver(threading.Thread):
                 first_packet = self.handshake()
 
                 if self.running:
+                    file_data = self.receive_packets(file, first_packet)
+
+                if self.running:
+                    self.logger.log(LogTypes.INF, 'Writing to file')
                     with open(self.filename, 'wb') as file:
-                        self.receive_packets(file, first_packet)
+                        file.write(file_data)
 
                 if self.running:
                     self.finish()
@@ -108,14 +112,15 @@ class Receiver(threading.Thread):
             self.logger.log(LogTypes.INF, 'Handshake successful')
         return first_packet
 
-    def receive_packets(self, file, first_packet):
+    def receive_packets(self, first_packet):
         last_frame_received = -1
+        file_data = b''
 
         type, seq_num, data = first_packet
         self.logger.log(LogTypes.RCV, f'Packet {seq_num} received.')
         last_frame_received, can_write = self.send_ack(seq_num, last_frame_received)
         if can_write:
-            file.write(data)
+            file_data += data
 
         RECEIVE_TIMEOUT = 10
         timer = Timer.Timer(RECEIVE_TIMEOUT)
@@ -137,10 +142,11 @@ class Receiver(threading.Thread):
                 self.logger.log(LogTypes.RCV, f'Packet {seq_num} received.')
                 last_frame_received, can_write = self.send_ack(seq_num, last_frame_received)
                 if can_write:
-                    file.write(data)
+                    file_data += data
 
         if timer.timeout():
             self.error('Timeout reached')
+        return file_data
 
     def send_ack(self, packet_number, last_frame_received):
         # if we have the right package send the ack to move the window
