@@ -74,6 +74,7 @@ class MainWindow(QMainWindow):
         self.start_button.clicked.connect(self.start_transmission)
         self.stop_button.clicked.connect(self.stop_transmission)
         self.path_button.clicked.connect(self.browse)
+        self.back_button_2.clicked.connect(self.back_to_mode)
 
     def connect_signals(self):
         self.log_signal.connect(self.log)
@@ -144,6 +145,8 @@ class MainWindow(QMainWindow):
         return parameters
 
     def start_transmission(self):
+        self.stop_button.setEnabled(True)
+        self.back_button_2.setEnabled(False)
         self.log_text_edit.clear()
 
         if self.client_mode == MainWindow.RECEIVER_MODE:
@@ -189,7 +192,8 @@ class MainWindow(QMainWindow):
             self.finish_dialog.setWindowTitle('Stopped')
 
         self.finish_dialog.exec()
-        self.stacked_widget.setCurrentIndex(MainWindow.MODE_PAGE)
+        self.stop_button.setEnabled(False)
+        self.back_button_2.setEnabled(True)
 
     def browse(self):
         if self.path_dialog.exec() == QFileDialog.Accepted:
