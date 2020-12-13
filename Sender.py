@@ -10,6 +10,7 @@ import random
 from pydispatch import dispatcher
 from enums.finishtypes import FinishTypes
 from enums.logtypes import LogTypes
+from enums.packettypes import PacketTypes
 
 # import the modules scripts
 from Components import Logger, \
@@ -60,11 +61,11 @@ class Sender(threading.Thread):
             self.socket.setblocking(False)
             self.socket.bind(Sender.BIND_ADDRESS)
             self.udp = Udp.Udp(self.socket,
-                                Udp.SENDER_PORT,
-                                LOSS_CHANCE=self.LOSS_CHANCE,
-                                CORRUPTION_CHANCE=self.CORRUPTION_CHANCE,
-                                DATA_MAX_SIZE=self.DATA_MAX_SIZE,
-                                LOG_SIGNAL=self.LOG_SIGNAL)
+                               Udp.SENDER_PORT,
+                               LOSS_CHANCE=self.LOSS_CHANCE,
+                               CORRUPTION_CHANCE=self.CORRUPTION_CHANCE,
+                               DATA_MAX_SIZE=self.DATA_MAX_SIZE,
+                               LOG_SIGNAL=self.LOG_SIGNAL)
             try:
                 self.wait_for_request()
                 self.handshake()
@@ -83,9 +84,9 @@ class Sender(threading.Thread):
                     # send the packets from window
                     while last_frame_sent < self.last_ack_received + window_size:
                         last_frame_sent += 1
-                        while self.running: # try sending until buffer has space
+                        while self.running:  # try sending until buffer has space
                             try:
-                                self.udp.send(PacketHandler.Types.DATA, last_frame_sent, frames[last_frame_sent])
+                                self.udp.send(PacketTypes.DATA, last_frame_sent, frames[last_frame_sent])
                                 break
                             except BlockingIOError:
                                 pass
@@ -93,7 +94,7 @@ class Sender(threading.Thread):
                         self.logger.log(LogTypes.SNT, f'Packet {last_frame_sent} sent.')
 
                     self.timer.start()
-										
+
                     while not self.timer.timeout() and self.timer.running():
                         self.check_response()
 
@@ -152,7 +153,7 @@ class Sender(threading.Thread):
             time.sleep(HANDSHAKE_SLEEP_TIME)
             try:
                 data = self.udp.receive()
-                if data is not None and data[0] == PacketHandler.Types.ACK:
+                if data is not None and data[0] == PacketTypes.ACK:
                     break
             except BlockingIOError:
                 pass
@@ -198,7 +199,7 @@ class Sender(threading.Thread):
         if packet is None:
             return
 
-        if packet[0] == PacketHandler.Types.ACK:
+        if packet[0] == PacketTypes.ACK:
             _, seq_num, _ = packet
             self.logger.log(LogTypes.RCV, f'Acknowledgement {seq_num} received.')
 
@@ -214,11 +215,11 @@ class Sender(threading.Thread):
         FINISH_TRIES = 40
         FINISH_SLEEP_TIME = 0.1
         while self.running:
-            self.udp.send(PacketHandler.Types.FINISH)
+            self.udp.send(PacketTypes.FINISH)
             time.sleep(FINISH_SLEEP_TIME)
             try:
                 temp = self.udp.receive()
-                if temp is not None and temp[0] == PacketHandler.Types.FINISH:
+                if temp is not None and temp[0] == PacketTypes.FINISH:
                     break
             except BlockingIOError:
                 pass

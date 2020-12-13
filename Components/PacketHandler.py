@@ -1,9 +1,10 @@
-from enum import Enum
 import random
 import zlib
 
 from Components import Logger
 from enums.logtypes import LogTypes
+from enums.packettypes import PacketTypes
+
 
 '''
     OUR PACKET STRUCTURE
@@ -15,17 +16,6 @@ from enums.logtypes import LogTypes
 --- seq_num[67-95]
 --- data[96..]
 '''
-
-
-class Types(Enum):
-    DATA = 1
-    ACK = 2
-    REQUEST = 3
-    HANDSHAKE = 4
-    FINISH = 5
-
-    def to_bytes(self, length, byteorder, signed=False):
-        return self.value.to_bytes(length, byteorder=byteorder, signed=signed)
 
 
 class PacketHandler:
@@ -93,13 +83,13 @@ class PacketHandler:
         return packet_bytes
 
     def decode(self, packet_bytes):
-				# decode up to checksum
+        # decode up to checksum
         source_port = int.from_bytes(packet_bytes[0:16], 'little')
         destination_port = int.from_bytes(packet_bytes[16:32], 'little')
         length = int.from_bytes(packet_bytes[32:48], 'little')
         checksum = int.from_bytes(packet_bytes[48:64], 'little')
-		
-				# Check Packet Integrity
+
+        # Check Packet Integrity
         if checksum != zlib.crc32(packet_bytes[:48] + packet_bytes[64:]):
             self.logger.log(LogTypes.WRN, 'Packet was corrupted')
             return None
@@ -108,7 +98,7 @@ class PacketHandler:
         if self.destination_port is not None and source_port != self.destination_port:
             self.logger.log(LogTypes.WRN, 'Packet has wrong source port')
             return None
-						
+
         # source and destination are reversed in incomming packets
         if destination_port != self.source_port:
             self.logger.log(LogTypes.WRN, 'Packet has wrong destination port')
@@ -117,9 +107,9 @@ class PacketHandler:
         if len(packet_bytes) != length:
             self.logger.log(LogTypes.WRN, 'Packet has wrong length')
             return None
-						
-				# decode after checksum
-        type = Types(int.from_bytes(packet_bytes[64:67], 'little'))
+
+        # decode after checksum
+        type = PacketTypes(int.from_bytes(packet_bytes[64:67], 'little'))
         seq_num = int.from_bytes(packet_bytes[67:96], 'little', signed=True)
         data = packet_bytes[96:]
 
@@ -130,7 +120,7 @@ class PacketHandler:
         if temp is None:
             return None
 
-        if temp[0] == Types.HANDSHAKE:
+        if temp[0] == PacketTypes.HANDSHAKE:
             return temp[0], temp[1], *self.unmake_handshake(temp[2])
         else:
             return temp

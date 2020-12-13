@@ -5,6 +5,7 @@ import random
 
 from Components import Logger, PacketHandler
 from enums.logtypes import LogTypes
+from enums.packettypes import PacketTypes
 
 SENDER_PORT = 24450
 
@@ -36,7 +37,7 @@ class Udp:
         if random.randint(0, 1000) <= self.loss_chance:
             self.logger.log(LogTypes.WRN, 'Packet was lost')
             return
-        self.packet_handler.make_handshake(PacketHandler.Types.HANDSHAKE, data_max_size, loss_chance, corruption_chance, filename)
+        self.packet_handler.make_handshake(PacketTypes.HANDSHAKE, data_max_size, loss_chance, corruption_chance, filename)
         self.socket.sendto(self.packet_handler.get_bytes(), self.destination_address)
 
     def set_loss_chance(self, loss_chance):
@@ -50,7 +51,7 @@ class Udp:
         if packet_bytes is None:
             return False
         temp = self.packet_handler.unmake(packet_bytes)
-        if temp is None or temp[0] != PacketHandler.Types.REQUEST:
+        if temp is None or temp[0] != PacketTypes.REQUEST:
             return False
 
         self.destination_address = address
@@ -66,7 +67,7 @@ class Udp:
         temp = self.packet_handler.unmake(packet_bytes)
         if temp is None:
             return None
-        elif temp[0] != PacketHandler.Types.HANDSHAKE:
+        elif temp[0] != PacketTypes.HANDSHAKE:
             return temp
         else:
             self.update_buffer_size(temp[2] + self.packet_handler.HEADER_SIZE)

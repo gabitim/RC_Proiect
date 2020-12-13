@@ -9,6 +9,7 @@ import random
 from pydispatch import dispatcher
 from enums.finishtypes import FinishTypes
 from enums.logtypes import LogTypes
+from enums.packettypes import PacketTypes
 
 from Components import Logger, \
     PacketHandler, \
@@ -68,7 +69,7 @@ class Receiver(threading.Thread):
     def handshake(self):
         if self.running:
             self.logger.log(LogTypes.INF, 'Handshake started')
-        self.udp.send(PacketHandler.Types.REQUEST)
+        self.udp.send(PacketTypes.REQUEST)
         self.udp.update_source_port()
 
         counter = 0
@@ -78,7 +79,7 @@ class Receiver(threading.Thread):
             time.sleep(HANDSHAKE_SLEEP_TIME)
             try:
                 temp = self.udp.receive()
-                if temp is not None and temp[0] == PacketHandler.Types.HANDSHAKE:
+                if temp is not None and temp[0] == PacketTypes.HANDSHAKE:
                     break
             except (BlockingIOError, ConnectionResetError):
                 pass
@@ -86,7 +87,7 @@ class Receiver(threading.Thread):
             if counter > HANDSHAKE_TRIES:
                 self.error('Did not receive Handshake')
 
-            self.udp.send(PacketHandler.Types.REQUEST)
+            self.udp.send(PacketTypes.REQUEST)
 
         if self.running:
             type, _, filename = temp
@@ -97,11 +98,11 @@ class Receiver(threading.Thread):
         HANDSHAKE_ACK_SLEEP_TIME = 0.1
         first_packet = None
         while self.running:
-            self.udp.send(PacketHandler.Types.ACK, -1)
+            self.udp.send(PacketTypes.ACK, -1)
             time.sleep(HANDSHAKE_ACK_SLEEP_TIME)
             try:
                 data = self.udp.receive()
-                if data is not None and data[0] == PacketHandler.Types.DATA:
+                if data is not None and data[0] == PacketTypes.DATA:
                     first_packet = data
                     break
             except BlockingIOError:
@@ -139,7 +140,7 @@ class Receiver(threading.Thread):
             timer.restart()
 
             type, seq_num, data = temp
-            if type == PacketHandler.Types.FINISH:
+            if type == PacketTypes.FINISH:
                 break
             else:
                 self.logger.log(LogTypes.RCV, f'Packet {seq_num} received.')
@@ -157,14 +158,14 @@ class Receiver(threading.Thread):
             last_frame_received += 1
             self.logger.log(LogTypes.OTH, 'Got expected packet')
             self.logger.log(LogTypes.SNT, f'Acknowledgement {last_frame_received} sent.')
-            self.udp.send(PacketHandler.Types.ACK, last_frame_received)
+            self.udp.send(PacketTypes.ACK, last_frame_received)
 
             return last_frame_received, True
         # if we have wrong packet send ack to reset the window
         else:
             self.logger.log(LogTypes.OTH, 'Got wrong packet')
             self.logger.log(LogTypes.SNT, f'Acknowledgement {last_frame_received} sent.')
-            self.udp.send(PacketHandler.Types.ACK, last_frame_received)
+            self.udp.send(PacketTypes.ACK, last_frame_received)
 
             return last_frame_received, False
 
@@ -175,7 +176,7 @@ class Receiver(threading.Thread):
         FINISH_TRIES = 20
         FINISH_SLEEP_TIME = 0.1
         while self.running:
-            self.udp.send(PacketHandler.Types.FINISH)
+            self.udp.send(PacketTypes.FINISH)
             time.sleep(FINISH_SLEEP_TIME)
             counter += 1
             if counter > FINISH_TRIES:
