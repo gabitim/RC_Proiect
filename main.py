@@ -24,13 +24,13 @@ class MainWindow(QMainWindow):
     LOG_PAGE = 2
 
     COLOR_DICT = {
-        LogTypes.SET : '#C7EA46', # LIME GREEN
-        LogTypes.SNT : '#000000', # BLACK
-        LogTypes.RCV : '#1E90FF', # LIGHT BLUE
-        LogTypes.ERR : '#FF0000', # RED
-        LogTypes.WRN : '#994D00', # ORANGE
-        LogTypes.INF : '#013220', # DARK GREEN
-        LogTypes.OTH : '#871F78'  # DARK PURPLE
+        LogTypes.SET: '#C7EA46',  # LIME GREEN
+        LogTypes.SNT: '#000000',  # BLACK
+        LogTypes.RCV: '#1E90FF',  # LIGHT BLUE
+        LogTypes.ERR: '#FF0000',  # RED
+        LogTypes.WRN: '#994D00',  # ORANGE
+        LogTypes.INF: '#013220',  # DARK GREEN
+        LogTypes.OTH: '#871F78'  # DARK PURPLE
     }
 
     log_signal = pyqtSignal(LogTypes, str)
@@ -154,9 +154,9 @@ class MainWindow(QMainWindow):
             if foldername == '':
                 foldername = '.'
 
-            sender_ip = str(self.ip_spin_box_1.value()) + '.' +\
-                        str(self.ip_spin_box_2.value()) + '.' +\
-                        str(self.ip_spin_box_3.value()) + '.' +\
+            sender_ip = str(self.ip_spin_box_1.value()) + '.' + \
+                        str(self.ip_spin_box_2.value()) + '.' + \
+                        str(self.ip_spin_box_3.value()) + '.' + \
                         str(self.ip_spin_box_4.value())
             self.worker = Receiver(foldername, sender_ip, self.SIGNALS)
 
@@ -230,8 +230,9 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1: # console mode
-        # TODO daca e sender -> run sender, receiver -> run receiver
+    if len(sys.argv) > 1:  # console mode
+        # TODO Silviu daca e sender -> run sender,
+        #  receiver -> run receiver
         # handle defaults here!
         # command line params example:
         # 1. path to the file to be sent

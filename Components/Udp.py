@@ -7,18 +7,19 @@ from Components import Logger, PacketHandler
 from enums.logtypes import LogTypes
 from enums.packettypes import PacketTypes
 
-SENDER_PORT = 24450
+SENDER_PORT = 24450  # also used for port forwarding in router(for WAN)
 
 
 class Udp:
-    def __init__(self, socket, source_port, destination_address=None, LOSS_CHANCE=0, CORRUPTION_CHANCE=0, DATA_MAX_SIZE=-1, LOG_SIGNAL=None):
+    def __init__(self, socket, source_port, destination_address=None, LOSS_CHANCE=0, CORRUPTION_CHANCE=0,
+                 DATA_MAX_SIZE=-1, LOG_SIGNAL=None):
         self.socket = socket
         self.destination_address = destination_address
         destination_port = destination_address[1] if destination_address is not None else None
         self.packet_handler = PacketHandler.PacketHandler(source_port, destination_port, CORRUPTION_CHANCE, LOG_SIGNAL)
 
         self.loss_chance = LOSS_CHANCE
-        if DATA_MAX_SIZE >= 0:
+        if DATA_MAX_SIZE > self.packet_handler.HANDSHAKE_SIZE:
             self.buffer_size = DATA_MAX_SIZE
         else:
             self.buffer_size = 0
@@ -37,7 +38,8 @@ class Udp:
         if random.randint(0, 1000) <= self.loss_chance:
             self.logger.log(LogTypes.WRN, 'Packet was lost')
             return
-        self.packet_handler.make_handshake(PacketTypes.HANDSHAKE, data_max_size, loss_chance, corruption_chance, filename)
+        self.packet_handler.make_handshake(PacketTypes.HANDSHAKE, data_max_size, loss_chance,
+                                           corruption_chance, filename)
         self.socket.sendto(self.packet_handler.get_bytes(), self.destination_address)
 
     def set_loss_chance(self, loss_chance):

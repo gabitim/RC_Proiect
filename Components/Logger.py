@@ -1,5 +1,6 @@
 from pydispatch import dispatcher
 
+
 class Logger:
     def __init__(self, LOG_SIGNAL=None):
         if LOG_SIGNAL is None:
@@ -12,5 +13,5 @@ class Logger:
         if self.console_mode:
             # TODO Silviu fa log cum vrei tu AICI!
             pass
-        else: # QT logging
+        else:  # QT logging
             dispatcher.send(self.LOG_SIGNAL, log_type=log_type, log_message=log_message)

@@ -9,12 +9,10 @@ class Timer:
         self.start_time = self.TIMER_STOP
         self.duration = duration
 
-    # start the timer
     def start(self):
         if self.start_time == self.TIMER_STOP:
             self.start_time = time.time()
 
-    # stop the timer
     def stop(self):
         if self.start_time != self.TIMER_STOP:
             self.start_time = self.TIMER_STOP
@@ -26,6 +24,7 @@ class Timer:
     def running(self):
         return self.start_time != self.TIMER_STOP
 
+    # check if we have a timeout
     def timeout(self):
         if not self.running():
             return False

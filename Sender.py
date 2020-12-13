@@ -2,11 +2,8 @@
 
 import socket
 import os
-import sys
-import _thread
 import threading
 import time
-import random
 from pydispatch import dispatcher
 from enums.finishtypes import FinishTypes
 from enums.logtypes import LogTypes
@@ -14,7 +11,6 @@ from enums.packettypes import PacketTypes
 
 # import the modules scripts
 from Components import Logger, \
-    PacketHandler, \
     Timer, \
     Udp
 
@@ -24,7 +20,7 @@ SEP = os.path.sep
 class Sender(threading.Thread):
     BIND_ADDRESS = ('0.0.0.0', Udp.SENDER_PORT)
 
-    # parameters order: PACKET_SIZE, WINDOW_SIZE, LOSS_CHANCE, CORRUPTION_CHANCE, TIMEOUT
+    # parameters order: DATA_MAX_SIZE, WINDOW_SIZE, LOSS_CHANCE, CORRUPTION_CHANCE, TIMEOUT
     def __init__(self, filename, parameters, SIGNALS=None):
         super().__init__()
         self.running = True
@@ -44,8 +40,9 @@ class Sender(threading.Thread):
             self.LOG_SIGNAL = None
         else:
             self.console_mode = False
-            # [LOG_SIGNAL, FINISH_SIGNAL]
+
             self.SIGNALS = SIGNALS
+            # order: [LOG_SIGNAL, FINISH_SIGNAL]
             self.LOG_SIGNAL = self.SIGNALS[0]
             self.FINISH_SIGNAL = self.SIGNALS[1]
 
@@ -55,6 +52,20 @@ class Sender(threading.Thread):
         self.last_ack_received = -1
 
     def run(self):
+
+        """Logic:
+            ---- handshake process ----
+            1. wait for request
+            2. send handshake response
+            3. wait for handshake ack
+            ---- sending data ----
+            4. load the file into ram, make frames, calculate no of frames
+            5. start the go back n process
+            ---- finish process ----
+            6. send finish frame
+            7. wait for finish ack
+            8. close the connection
+        """
 
         self.logger.log(LogTypes.SET, 'Sender has started')
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as self.socket:
@@ -67,18 +78,23 @@ class Sender(threading.Thread):
                                DATA_MAX_SIZE=self.DATA_MAX_SIZE,
                                LOG_SIGNAL=self.LOG_SIGNAL)
             try:
+
                 self.wait_for_request()
                 self.handshake()
+
+                """step 4."""
                 frames = self.read_data()
                 number_of_frames = len(frames)
 
-                # we run until all the packets are delivered
                 self.last_ack_received = -1
                 last_frame_sent = -1
                 self.timer = Timer.Timer(self.TIMEOUT)
                 timeout_counter = 0
                 MAX_TIMEOUTS = 50
                 window_size = min(self.WINDOW_SIZE, number_of_frames)
+
+                """step 5."""
+                """GO BACK N LOGIC  --> # we run until all the packets are delivered"""
                 while self.running and self.last_ack_received < number_of_frames - 1:
 
                     # send the packets from window
@@ -123,6 +139,7 @@ class Sender(threading.Thread):
         REQUEST_TRIES = 60
         REQUEST_SLEEP_TIME = 1
         while self.running:
+            """step 1."""
             try:  # try every second during 60 seconds to connect, else terminate
                 if self.udp.accept_request():
                     break
@@ -146,12 +163,14 @@ class Sender(threading.Thread):
         HANDSHAKE_SLEEP_TIME = 0.1
         while self.running:
 
+            """step 2."""
             self.udp.send_handshake(self.DATA_MAX_SIZE,
                                     self.LOSS_CHANCE,
                                     self.CORRUPTION_CHANCE,
                                     self.FILENAME[last_sep + 1:])
             time.sleep(HANDSHAKE_SLEEP_TIME)
             try:
+                """step 3."""
                 data = self.udp.receive()
                 if data is not None and data[0] == PacketTypes.ACK:
                     break
@@ -215,9 +234,11 @@ class Sender(threading.Thread):
         FINISH_TRIES = 40
         FINISH_SLEEP_TIME = 0.1
         while self.running:
+            """step 6."""
             self.udp.send(PacketTypes.FINISH)
             time.sleep(FINISH_SLEEP_TIME)
             try:
+                """step 7."""
                 temp = self.udp.receive()
                 if temp is not None and temp[0] == PacketTypes.FINISH:
                     break
@@ -242,7 +263,7 @@ class Sender(threading.Thread):
 
 
 def run_sender(filename, parameters):
-    sender = Sender(filename, parameters)  # TODO console
+    sender = Sender(filename, parameters)
     sender.run()
 
 

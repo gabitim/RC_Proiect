@@ -2,21 +2,19 @@
 
 import time
 import socket
-import sys
 import os
 import threading
-import random
 from pydispatch import dispatcher
 from enums.finishtypes import FinishTypes
 from enums.logtypes import LogTypes
 from enums.packettypes import PacketTypes
 
 from Components import Logger, \
-    PacketHandler, \
     Udp, \
     Timer
 
 SEP = os.path.sep
+
 
 # receive packets and writes them into filename
 class Receiver(threading.Thread):
@@ -35,8 +33,8 @@ class Receiver(threading.Thread):
         else:
             self.console_mode = False
 
-            # [LOG_SIGNAL, FINISH_SIGNAL]
             self.SIGNALS = SIGNALS
+            # order: [LOG_SIGNAL, FINISH_SIGNAL]
             self.LOG_SIGNAL = self.SIGNALS[0]
             self.FINISH_SIGNAL = self.SIGNALS[1]
 
@@ -50,16 +48,20 @@ class Receiver(threading.Thread):
             # socket does not have an address yet, so init with port 0
             self.udp = Udp.Udp(self.socket, 0, self.sender_address, LOG_SIGNAL=self.LOG_SIGNAL)
             try:
-                first_packet = self.handshake()
+                # with handshake set a connection and receive vital parameters (3 steps)
+                parameters_packet = self.handshake()
 
+                # receive data
                 if self.running:
-                    file_data = self.receive_packets(first_packet)
+                    file_data = self.receive_packets(parameters_packet)
 
+                # write data
                 if self.running:
                     self.logger.log(LogTypes.INF, 'Writing to file')
                     with open(self.filename, 'wb') as file:
                         file.write(file_data)
 
+                # close
                 if self.running:
                     self.finish()
 
@@ -67,11 +69,15 @@ class Receiver(threading.Thread):
                 self.error('Sender-side error')
 
     def handshake(self):
+        """3 steps:"""
+
+        """1. SEND HANDSHAKE REQUEST"""
         if self.running:
             self.logger.log(LogTypes.INF, 'Handshake started')
         self.udp.send(PacketTypes.REQUEST)
         self.udp.update_source_port()
 
+        """2. WAIT FOR HANDSHAKE RESPONSE"""
         counter = 0
         HANDSHAKE_TRIES = 60
         HANDSHAKE_SLEEP_TIME = 1
@@ -85,7 +91,7 @@ class Receiver(threading.Thread):
                 pass
             counter = counter + 1
             if counter > HANDSHAKE_TRIES:
-                self.error('Did not receive Handshake')
+                self.error('Did not receive Handshake Response')
 
             self.udp.send(PacketTypes.REQUEST)
 
@@ -93,6 +99,7 @@ class Receiver(threading.Thread):
             type, _, filename = temp
             self.filename = self.filename + filename
 
+        """3. SEND HANDSHAKE ACK"""
         counter = 0
         HANDSHAKE_ACK_TRIES = 20
         HANDSHAKE_ACK_SLEEP_TIME = 0.1
@@ -115,31 +122,36 @@ class Receiver(threading.Thread):
             self.logger.log(LogTypes.INF, 'Handshake successful')
         return first_packet
 
-    def receive_packets(self, first_packet):
+    def receive_packets(self, parameters_packet):
         last_frame_received = -1
         file_data = b''
 
-        type, seq_num, data = first_packet
+        type, seq_num, data = parameters_packet
         self.logger.log(LogTypes.RCV, f'Packet {seq_num} received.')
+
         last_frame_received, can_write = self.send_ack(seq_num, last_frame_received)
+
         if can_write:
             file_data += data
 
         RECEIVE_TIMEOUT = 10
         timer = Timer.Timer(RECEIVE_TIMEOUT)
+
+        """GO BACK N LOGIC --> wait for packets, send ack, and move the window"""
         timer.start()
-        while self.running and not timer.timeout(): # get the next packet from sender
+        while self.running and not timer.timeout():  # get the next packet from sender
             try:
                 temp = self.udp.receive()
             except BlockingIOError:
                 continue
 
             if temp is None:
-                 continue
+                continue
 
             timer.restart()
 
             type, seq_num, data = temp
+            # receive finish frame (step 6 from sender) its time to stop
             if type == PacketTypes.FINISH:
                 break
             else:
@@ -153,7 +165,7 @@ class Receiver(threading.Thread):
         return file_data
 
     def send_ack(self, packet_number, last_frame_received):
-        # if we have the right package send the ack to move the window
+        """GO BACK N LOGIC --> if we have the right frame send the ack to move the window """
         if packet_number == last_frame_received + 1:
             last_frame_received += 1
             self.logger.log(LogTypes.OTH, 'Got expected packet')
@@ -176,6 +188,7 @@ class Receiver(threading.Thread):
         FINISH_TRIES = 20
         FINISH_SLEEP_TIME = 0.1
         while self.running:
+            # send finish ack (step 7 from sender)
             self.udp.send(PacketTypes.FINISH)
             time.sleep(FINISH_SLEEP_TIME)
             counter += 1
@@ -206,4 +219,4 @@ if __name__ == '__main__':
     foldername = f"test"
     sender_ip = '127.0.0.1'
 
-    run_receiver(foldername, sender_ip)
+    run_receiver(foldername)
