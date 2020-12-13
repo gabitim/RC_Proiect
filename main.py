@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
     def configure_dialogs(self):
         self.path_dialog.setAcceptMode(QFileDialog.AcceptOpen)
 
-        self.finish_dialog.resize(200, 100)
+        self.finish_dialog.resize(250, 100)
         button_box = QDialogButtonBox(self.finish_dialog)
         horizontal_layout = QHBoxLayout(self.finish_dialog)
         button_box.setStandardButtons(QDialogButtonBox.Ok)
