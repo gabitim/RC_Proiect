@@ -126,10 +126,11 @@ class Sender(threading.Thread):
                 if self.udp.accept_request():
                     break
             except BlockingIOError:
-                counter = counter + 1
-                if counter > REQUEST_TRIES:
-                    self.error('No Receiver requests')
-                time.sleep(REQUEST_SLEEP_TIME)
+                pass
+            counter = counter + 1
+            if counter > REQUEST_TRIES:
+                self.error('No Receiver requests')
+            time.sleep(REQUEST_SLEEP_TIME)
 
     def handshake(self):
         if self.running:
@@ -151,13 +152,13 @@ class Sender(threading.Thread):
             time.sleep(HANDSHAKE_SLEEP_TIME)
             try:
                 data = self.udp.receive()
-                if data[0] == PacketHandler.Types.ACK:
+                if data is not None and data[0] == PacketHandler.Types.ACK:
                     break
             except BlockingIOError:
-                counter = counter + 1
-
-                if counter > HANDSHAKE_TRIES:
-                    self.error('Could not send handshake')
+                pass
+            counter = counter + 1
+            if counter > HANDSHAKE_TRIES:
+                self.error('Could not send handshake')
 
         if self.running:
             self.logger.log(LogTypes.INF, 'Handshake successful')
@@ -195,7 +196,6 @@ class Sender(threading.Thread):
             return
 
         if packet is None:
-            self.error("Receiver error")
             return
 
         if packet[0] == PacketHandler.Types.ACK:
@@ -214,18 +214,18 @@ class Sender(threading.Thread):
         FINISH_TRIES = 40
         FINISH_SLEEP_TIME = 0.1
         while self.running:
-
             self.udp.send(PacketHandler.Types.FINISH)
             time.sleep(FINISH_SLEEP_TIME)
             try:
                 temp = self.udp.receive()
-                if temp[0] == PacketHandler.Types.FINISH:
+                if temp is not None and temp[0] == PacketHandler.Types.FINISH:
                     break
             except BlockingIOError:
-                counter = counter + 1
+                pass
+            counter = counter + 1
 
-                if counter > FINISH_TRIES:
-                    self.error('Did not get finish confirmation. Receiver may be still open')
+            if counter > FINISH_TRIES:
+                self.error('Did not get finish confirmation. Receiver may be still open')
 
         if self.running and not self.console_mode:
             dispatcher.send(self.FINISH_SIGNAL, type=FinishTypes.NORMAL)

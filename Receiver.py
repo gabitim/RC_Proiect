@@ -52,7 +52,7 @@ class Receiver(threading.Thread):
                 first_packet = self.handshake()
 
                 if self.running:
-                    file_data = self.receive_packets(file, first_packet)
+                    file_data = self.receive_packets(first_packet)
 
                 if self.running:
                     self.logger.log(LogTypes.INF, 'Writing to file')
@@ -81,9 +81,10 @@ class Receiver(threading.Thread):
                 if temp is not None and temp[0] == PacketHandler.Types.HANDSHAKE:
                     break
             except (BlockingIOError, ConnectionResetError):
-                counter = counter + 1
-                if counter > HANDSHAKE_TRIES:
-                    self.error('Did not receive Handshake')
+                pass
+            counter = counter + 1
+            if counter > HANDSHAKE_TRIES:
+                self.error('Did not receive Handshake')
 
             self.udp.send(PacketHandler.Types.REQUEST)
 
@@ -100,13 +101,14 @@ class Receiver(threading.Thread):
             time.sleep(HANDSHAKE_ACK_SLEEP_TIME)
             try:
                 data = self.udp.receive()
-                if data[0] == PacketHandler.Types.DATA:
+                if data is not None and data[0] == PacketHandler.Types.DATA:
                     first_packet = data
                     break
             except BlockingIOError:
-                counter = counter + 1
-                if counter > HANDSHAKE_ACK_TRIES:
-                    self.error('Could not send handshake')
+                pass
+            counter = counter + 1
+            if counter > HANDSHAKE_ACK_TRIES:
+                self.error('Could not send handshake')
 
         if self.running:
             self.logger.log(LogTypes.INF, 'Handshake successful')
@@ -130,11 +132,12 @@ class Receiver(threading.Thread):
                 temp = self.udp.receive()
             except BlockingIOError:
                 continue
-            if not temp:
-                self.error('Sender error')
-                break
+
+            if temp is None:
+                 continue
 
             timer.restart()
+
             type, seq_num, data = temp
             if type == PacketHandler.Types.FINISH:
                 break

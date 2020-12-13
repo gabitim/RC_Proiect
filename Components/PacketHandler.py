@@ -85,8 +85,8 @@ class PacketHandler:
 
         ''' simulate wrong checksum!! '''
         if random.randint(0, 1000) <= self.corruption_chance:
-            corrupted_byte = random.randint(0, len(packet_bytes))
             bytes_list = list(packet_bytes)
+            corrupted_byte = random.randint(0, len(bytes_list) - 1)
             bytes_list[corrupted_byte] += 1
             packet_bytes = bytes(bytes_list)
 
@@ -102,6 +102,10 @@ class PacketHandler:
         data = packet_bytes[96:]
 
         ''' Check Packet Integrity '''
+        if checksum != zlib.crc32(packet_bytes[:48] + packet_bytes[64:]):
+            self.logger.log(LogTypes.WRN, 'Packet was corrupted')
+            return None
+
         # source and destination are reversed in incomming packets
         if source_port != self.destination_port and self.destination_port is not None:
             self.logger.log(LogTypes.WRN, 'Packet has wrong source port')
@@ -113,10 +117,6 @@ class PacketHandler:
 
         if len(packet_bytes) != length:
             self.logger.log(LogTypes.WRN, 'Packet has wrong length')
-            return None
-
-        if checksum != zlib.crc32(packet_bytes[:48] + packet_bytes[64:]):
-            self.logger.log(LogTypes.WRN, 'Packet was corrupted')
             return None
 
         return type, seq_num, data
