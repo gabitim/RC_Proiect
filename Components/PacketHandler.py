@@ -87,7 +87,7 @@ class PacketHandler:
         if random.randint(0, 1000) <= self.corruption_chance:
             bytes_list = list(packet_bytes)
             corrupted_byte = random.randint(0, len(bytes_list) - 1)
-            bytes_list[corrupted_byte] += 1
+            bytes_list[corrupted_byte] = (bytes_list[corrupted_byte] + 1) % 256
             packet_bytes = bytes(bytes_list)
 
         return packet_bytes
