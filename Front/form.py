@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(961, 678)
+        MainWindow.resize(991, 678)
         font = QtGui.QFont()
         font.setPointSize(16)
         MainWindow.setFont(font)
@@ -89,7 +89,7 @@ class Ui_MainWindow(object):
         self.timeout_slider.setMinimum(1)
         self.timeout_slider.setMaximum(5000)
         self.timeout_slider.setPageStep(50)
-        self.timeout_slider.setProperty("value", 500)
+        self.timeout_slider.setProperty("value", 200)
         self.timeout_slider.setOrientation(QtCore.Qt.Horizontal)
         self.timeout_slider.setObjectName("timeout_slider")
         self.param_page_layout.addWidget(self.timeout_slider, 5, 1, 1, 1)
@@ -406,7 +406,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.receiver_button.setText(_translate("MainWindow", "Receiver"))
         self.sender_button.setText(_translate("MainWindow", "Sender"))
-        self.timeout_value_label.setText(_translate("MainWindow", "500"))
+        self.timeout_value_label.setText(_translate("MainWindow", "200"))
         self.path_button.setText(_translate("MainWindow", "Choose folder"))
         self.start_button.setText(_translate("MainWindow", "Start"))
         self.packet_loss_chance_value_label.setText(_translate("MainWindow", "0.1"))

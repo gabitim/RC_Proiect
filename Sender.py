@@ -69,8 +69,7 @@ class Sender(threading.Thread):
                 # we run until all the packets are delivered
                 self.last_ack_received = -1
                 last_frame_sent = -1
-                SEND_TIMEOUT = 0.2
-                self.timer = Timer.Timer(SEND_TIMEOUT)
+                self.timer = Timer.Timer(self.TIMEOUT)
                 timeout_counter = 0
                 MAX_TIMEOUTS = 50
                 window_size = min(self.WINDOW_SIZE, number_of_frames)
@@ -98,7 +97,7 @@ class Sender(threading.Thread):
                         self.timer.stop()
                         # we send all the packets from window again
                         last_frame_sent = self.last_ack_received
-                        
+
                         timeout_counter += 1
                         if timeout_counter > MAX_TIMEOUTS:
                             self.error('Max timeouts for the same window reached')
