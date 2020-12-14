@@ -96,11 +96,10 @@ In the case that the receiver is sent a duplicate packet, it sends an ACK messag
 \newpage
 \subsection{Block diagrams}
 
-\begin{figure}[h!]
-	\caption{Block diagram of Go-Back-N algorithm. \href{http://www.myreadingroom.co.in/notes-and-studymaterial/68-dcn/813-go-back-n-arq-protocol.html}{[Source]}}
+\begin{figure}[!htb]
 	\centering
 	\includegraphics[width=\linewidth]{gbn.jpg}
-	\label{fig:fig1}
+	\caption{Block diagram of Go-Back-N algorithm. \href{http://www.myreadingroom.co.in/notes-and-studymaterial/68-dcn/813-go-back-n-arq-protocol.html}{[Source]}}\label{fig:fig1}
 \end{figure}
 
 \section{Classes}
@@ -123,13 +122,6 @@ After the first data packet is received, it proceeds with the Go-Back-N algorith
 
 If a finish message is received, it writes the data from memory to the user-chosen folder. Next, it sends a certain number of finish messages and shuts down errorlessly.
 
-\begin{figure}[h!]
-	\caption{Typical Sender-Receiver Flow.}
-	\centering
-	\includegraphics[width=\linewidth]{Flow.png}
-	\label{fig:fig2}
-\end{figure}
-
 \subsection{Udp}
 
 The Udp class abstracts packet sending and receiving, along with all abstractions provided by the PacketHandler member. It does so using AF_INET family, non-blocking sockets of DGRAM type.
@@ -150,7 +142,7 @@ This class is used for logging. It will use the signal for logging if it is pass
 
 Three enums are used.
 
-One for packet types: DATA, ACKnowledgement, REQuest, HANDSHAKE and FINISH.
+One for packet types: DATA, ACKnowledgement, REQuest, PaRaMeTers and FINish.
 
 The next for log types: Start/End of Transmission, SeNT, ReCeiVed, ERRor, WaRNing, INFormative and OTHer.
 
@@ -158,13 +150,69 @@ And, finally, one for finish types: NORMAL, FORCED, and ERROR.
 
 \section{Other specifications}
 
+\subsection{Flow}
+
+A typical theoretical flow is presented in figure \ref{fig:fig2} and a real example (over the same network, with a window size of 2, 2 different sized packets to send and a high corruption chance)  in figure \ref{fig:fig3}. If an error occurs at either end, or it does not connect, it will close the connection. The other end will repeat a certain amount of times the operation it is currently trying to complete before giving up with an error and shutting down, or display an error message and shutdown immediately if the connection is made over the loopback address.
+
+\begin{figure}[!htb]
+	\centering
+	\includegraphics[width=\linewidth]{TheoreticalFlow.png}
+	\caption{Typical Theoretical Sender-Receiver Flow.}\label{fig:fig2}
+\end{figure}
+
+\begin{figure}[!htb]
+	\centering
+	\includegraphics[width=\linewidth]{PracticalFlow.png}
+		\caption{Typical Practical Sender-Receiver Flow.}\label{fig:fig3}
+\end{figure}
+
 \subsection{Sender-Receiver Launch Order}
 
 Do note that it does not matter which of the Receiver or Sender is launched first as long as the other delivers the first message successfully before the timeout.
 
+\subsection{Cross-network transmissions}
+
+When same device process or same network communication (Figure \ref{fig:fig4} and \ref{fig:fig5}) is needed - simply introducing the loopback address (127.0.0.1) or the address of the sender, respectively, should be enough for successful transmission, unless a firewall prevents that.
+
+\begin{figure}[!htb]
+	\begin{minipage}{0.48\textwidth}
+		\centering
+		\includegraphics[width=.7\linewidth]{LocalSend.png}
+		\caption{Same network packet sent.}\label{fig:fig4}
+	\end{minipage}\hfill
+	\begin{minipage}{0.48\textwidth}
+		\centering
+		\includegraphics[width=.7\linewidth]{LocalReceive.png}
+		\caption{Same network packet received.}\label{fig:fig5}
+	\end{minipage}\hfill
+\end{figure}
+
+If the Sender and Receiver are on different networks and we have access to all of the switches and routers that connect them, appropriate switching and routing should be configured, such that the Receiver is able to find the device with the specified ip.
+
+In the case that the traffic has to go through your ISP first, the Receiver has to use the public ip of the Sender (Figure \ref{fig:fig6} and \ref{fig:fig7}), then, if the isp-server connection is not direct (but through a router) there must be a port forwarding rule set on the router with the interface with the public ip address that forwards traffic on the SENDER_PORT = 24450 to the device running the Sender (Figure \ref{fig:fig8}).
+
+\begin{figure}[!htb]
+	\begin{minipage}{0.48\textwidth}
+		\centering
+		\includegraphics[width=.7\linewidth]{PublicSend.png}
+		\caption{Public ip packet sent.}\label{fig:fig6}
+	\end{minipage}\hfill
+	\begin{minipage}{0.48\textwidth}
+		\centering
+		\includegraphics[width=.7\linewidth]{PublicReceive.png}
+		\caption{Public ip packet received.}\label{fig:fig7}
+	\end{minipage}\hfill
+\end{figure}
+
+\begin{figure}[!htb]
+	\centering
+	\includegraphics[width=\linewidth]{PortForward.png}
+	\caption{Port forwarding configuration example.}\label{fig:fig8}
+\end{figure}
+
 \subsection{Packet Structure}
 
-
+% ack, data, req, fin, prmt, header
 
 \subsection{Packet loss and corruption}
 
@@ -173,6 +221,10 @@ As during our tests the networks proved to be quite reliable, we introoduced an 
 A packet may be arificially lost in send-related Udp functions by not sending it and reporting the loss via the logger.
 
 A packet may be arificially corrupted in the PacketHandler get\_bytes function by changing the values of a random bit.
+
+\subsection{Dependencies}
+
+% preinstalled, to install, what was used
 
 \section{Git repository}
 
