@@ -49,11 +49,11 @@ class Receiver(threading.Thread):
             self.udp = Udp.Udp(self.socket, 0, self.sender_address, LOG_SIGNAL=self.LOG_SIGNAL)
             try:
                 # with handshake set a connection and receive vital parameters (3 steps)
-                parameters_packet = self.handshake()
+                first_data_packet = self.handshake()
 
                 # receive data
                 if self.running:
-                    file_data = self.receive_packets(parameters_packet)
+                    file_data = self.receive_packets(first_data_packet)
 
                 # write data
                 if self.running:
@@ -110,7 +110,7 @@ class Receiver(threading.Thread):
             try:
                 data = self.udp.receive()
                 if data is not None and data[0] == PacketTypes.DATA:
-                    first_packet = data
+                    first_data_packet = data
                     break
             except BlockingIOError:
                 pass
@@ -120,13 +120,13 @@ class Receiver(threading.Thread):
 
         if self.running:
             self.logger.log(LogTypes.INF, 'Handshake successful')
-        return first_packet
+        return first_data_packet
 
-    def receive_packets(self, parameters_packet):
+    def receive_packets(self, first_data_packet):
         last_frame_received = -1
         file_data = b''
 
-        type, seq_num, data = parameters_packet
+        type, seq_num, data = first_data_packet
         self.logger.log(LogTypes.RCV, f'Packet {seq_num} received.')
 
         last_frame_received, can_write = self.send_ack(seq_num, last_frame_received)
