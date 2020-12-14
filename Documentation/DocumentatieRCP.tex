@@ -175,16 +175,9 @@ Do note that it does not matter which of the Receiver or Sender is launched firs
 When same device process or same network communication (Figure \ref{fig:fig4} and \ref{fig:fig5}) is needed - simply introducing the loopback address (127.0.0.1) or the address of the sender, respectively, should be enough for successful transmission, unless a firewall prevents that.
 
 \begin{figure}[!htb]
-	\begin{minipage}{0.48\textwidth}
-		\centering
-		\includegraphics[width=.7\linewidth]{LocalSend.png}
-		\caption{Same network packet sent.}\label{fig:fig4}
-	\end{minipage}\hfill
-	\begin{minipage}{0.48\textwidth}
-		\centering
-		\includegraphics[width=.7\linewidth]{LocalReceive.png}
-		\caption{Same network packet received.}\label{fig:fig5}
-	\end{minipage}\hfill
+	\centering
+	\includegraphics[width=.7\linewidth]{LocalRequestSend.png}
+	\caption{Same network packet sent.}\label{fig:fig4}
 \end{figure}
 
 If the Sender and Receiver are on different networks and we have access to all of the switches and routers that connect them, appropriate switching and routing should be configured, such that the Receiver is able to find the device with the specified ip.
