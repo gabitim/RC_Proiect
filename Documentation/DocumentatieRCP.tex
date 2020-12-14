@@ -98,7 +98,7 @@ In the case that the receiver is sent a duplicate packet, it sends an ACK messag
 
 \begin{figure}[!htb]
 	\centering
-	\includegraphics[width=\linewidth]{gbn.jpg}
+	\includegraphics[width=.9\linewidth]{gbn.jpg}
 	\caption{Block diagram of Go-Back-N algorithm. \href{http://www.myreadingroom.co.in/notes-and-studymaterial/68-dcn/813-go-back-n-arq-protocol.html}{[Source]}}\label{fig:fig1}
 \end{figure}
 
@@ -142,7 +142,7 @@ This class is used for logging. It will use the signal for logging if it is pass
 
 Three enums are used.
 
-One for packet types: DATA, ACKnowledgement, REQuest, PaRaMeTers and FINish.
+One for packet types, with their corresponding: DATA = 1, ACKnowledgement = 2, REQuest = 3, PaRaMeTers = 4 and FINish = 5.
 
 The next for log types: Start/End of Transmission, SeNT, ReCeiVed, ERRor, WaRNing, INFormative and OTHer.
 
@@ -156,13 +156,13 @@ A typical theoretical flow is presented in figure \ref{fig:fig2} and a real exam
 
 \begin{figure}[!htb]
 	\centering
-	\includegraphics[width=\linewidth]{TheoreticalFlow.png}
+	\includegraphics[width=.9\linewidth]{TheoreticalFlow.png}
 	\caption{Typical Theoretical Sender-Receiver Flow.}\label{fig:fig2}
 \end{figure}
 
 \begin{figure}[!htb]
 	\centering
-	\includegraphics[width=\linewidth]{PracticalFlow.png}
+	\includegraphics[width=.9\linewidth]{PracticalFlow.png}
 		\caption{Typical Practical Sender-Receiver Flow.}\label{fig:fig3}
 \end{figure}
 
@@ -176,36 +176,55 @@ When same device process or same network communication (Figure \ref{fig:fig4} an
 
 \begin{figure}[!htb]
 	\centering
-	\includegraphics[width=.7\linewidth]{LocalRequestSend.png}
+	\includegraphics[width=.9\linewidth]{LocalRequestSend.png}
 	\caption{Same network packet sent.}\label{fig:fig4}
 \end{figure}
 
 If the Sender and Receiver are on different networks and we have access to all of the switches and routers that connect them, appropriate switching and routing should be configured, such that the Receiver is able to find the device with the specified ip.
 
-In the case that the traffic has to go through your ISP first, the Receiver has to use the public ip of the Sender (Figure \ref{fig:fig6} and \ref{fig:fig7}), then, if the isp-server connection is not direct (but through a router) there must be a port forwarding rule set on the router with the interface with the public ip address that forwards traffic on the SENDER_PORT = 24450 to the device running the Sender (Figure \ref{fig:fig8}).
+In the case that the traffic has to go through your ISP first, the Receiver has to use the public ip of the Sender (Figure \ref{fig:fig5} and \ref{fig:fig6}), then, if the isp-server connection is not direct (but through a router) there must be a port forwarding rule set on the router with the interface with the public ip address that forwards traffic on the SENDER_PORT = 24450 to the device running the Sender (Figure \ref{fig:fig7}).
 
 \begin{figure}[!htb]
 	\begin{minipage}{0.48\textwidth}
 		\centering
-		\includegraphics[width=.7\linewidth]{PublicFinishSend.png}
-		\caption{Public ip packet sent.}\label{fig:fig6}
+		\includegraphics[width=.9\linewidth]{PublicFinishSend.png}
+		\caption{Public ip packet sent.}\label{fig:fig5}
 	\end{minipage}\hfill
-	\begin{minipage}{0.48\textwidth}
+	\begin{minipage}{0.9\textwidth}
 		\centering
 		\includegraphics[width=.7\linewidth]{PublicFinishReceive.png}
-		\caption{Public ip packet received.}\label{fig:fig7}
+		\caption{Public ip packet received.}\label{fig:fig6}
 	\end{minipage}\hfill
 \end{figure}
 
 \begin{figure}[!htb]
 	\centering
 	\includegraphics[width=\linewidth]{PortForward.png}
-	\caption{Port forwarding configuration example.}\label{fig:fig8}
+	\caption{Port forwarding configuration example.}\label{fig:fig7}
 \end{figure}
 
 \subsection{Packet Structure}
 
-% ack, data, req, fin, prmt, header
+The structure of the packet that is sent through the sockets is shown in figure \ref{fig:fig8}.
+
+DATA packets have at least one byte inside the data field. For ACK, REQ and FIN packets, that field is empty. And PRMT packets containt data with the structure displayed in figure \ref{fig:fig9}.
+
+DATA and ACK packets have the sequence number field set according to the sliding window protocol. All other packets have it set to 0.
+
+An ACK packet with the sequence number to -1 means both that no frame has been received yet (as the first sequence number is 0) and a confimation for PRMT receival (which has the same meaning as the former).
+
+\begin{figure}[!htb]
+	\begin{minipage}{0.48\textwidth}
+		\centering
+		\includegraphics[width=.7\linewidth]{ParametersStructure.png}
+		\caption{Packet Structure (Values are in bits).}\label{fig:fig8}
+	\end{minipage}\hfill
+	\begin{minipage}{0.48\textwidth}
+		\centering
+		\includegraphics[width=.7\linewidth]{PortForward.png}
+		\caption{Parameters Data (Values are in Bytes.}\label{fig:fig9}
+	\end{minipage}\hfill
+\end{figure}
 
 \subsection{Packet loss and corruption}
 
@@ -217,6 +236,7 @@ A packet may be arificially corrupted in the PacketHandler get\_bytes function b
 
 \subsection{Dependencies}
 
+TODO
 % preinstalled, to install, what was used
 
 \section{Git repository}
