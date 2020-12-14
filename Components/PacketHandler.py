@@ -21,7 +21,7 @@ from enums.packettypes import PacketTypes
 # THE REST OF THIS CLASS USES BYTES ONLY!!!
 class PacketHandler:
     HEADER_SIZE = 16
-    HANDSHAKE_SIZE = 10
+    PARAMETERS_SIZE = 10
 
     def __init__(self, source_port, destination_port, CORRUPTION_CHANCE, LOG_SIGNAL=None):
         self.source_port = source_port
@@ -43,8 +43,8 @@ class PacketHandler:
         self.compute_length()
         self.compute_checksum()
 
-    # for handshake
-    def make_handshake(self, type, data_max_size, loss_chance, corruption_chance, filename):
+    # for parameters
+    def make_parameters(self, type, data_max_size, loss_chance, corruption_chance, filename):
         self.type = type
         self.seq_num = 0
         self.data = data_max_size.to_bytes(2, 'little')
@@ -127,12 +127,12 @@ class PacketHandler:
         if temp is None:
             return None
 
-        if temp[0] == PacketTypes.HANDSHAKE:
-            return temp[0], temp[1], *self.unmake_handshake(temp[2])
+        if temp[0] == PacketTypes.PRMT:
+            return temp[0], temp[1], *self.unmake_parameters(temp[2])
         else:
             return temp
 
-    def unmake_handshake(self, data):
+    def unmake_parameters(self, data):
         data_max_size = int.from_bytes(data[0:2], 'little')
         loss_chance = int.from_bytes(data[2:4], 'little')
         corruption_chance = int.from_bytes(data[4:6], 'little')

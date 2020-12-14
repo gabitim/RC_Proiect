@@ -71,42 +71,42 @@ class Receiver(threading.Thread):
     def handshake(self):
         """3 steps:"""
 
-        """1. SEND HANDSHAKE REQUEST"""
+        """1. SEND REQUEST"""
         if self.running:
             self.logger.log(LogTypes.INF, 'Handshake started')
-        self.udp.send(PacketTypes.REQUEST)
+        self.udp.send(PacketTypes.REQ)
         self.udp.update_source_port()
 
-        """2. WAIT FOR HANDSHAKE RESPONSE"""
+        """2. WAIT FOR PARAMETERS"""
         counter = 0
-        HANDSHAKE_TRIES = 60
-        HANDSHAKE_SLEEP_TIME = 1
+        PARAMETERS_TRIES = 60
+        PARAMETERS_SLEEP_TIME = 1
         while self.running:
-            time.sleep(HANDSHAKE_SLEEP_TIME)
+            time.sleep(PARAMETERS_SLEEP_TIME)
             try:
                 temp = self.udp.receive()
-                if temp is not None and temp[0] == PacketTypes.HANDSHAKE:
+                if temp is not None and temp[0] == PacketTypes.PRMT:
                     break
             except (BlockingIOError, ConnectionResetError):
                 pass
             counter = counter + 1
-            if counter > HANDSHAKE_TRIES:
-                self.error('Did not receive Handshake Response')
+            if counter > PARAMETERS_TRIES:
+                self.error('Did not receive parameters')
 
-            self.udp.send(PacketTypes.REQUEST)
+            self.udp.send(PacketTypes.REQ)
 
         if self.running:
             type, _, filename = temp
             self.filename = self.filename + filename
 
-        """3. SEND HANDSHAKE ACK"""
+        """3. SEND PARAMETERS ACK (seq_num = -1)"""
         counter = 0
-        HANDSHAKE_ACK_TRIES = 20
-        HANDSHAKE_ACK_SLEEP_TIME = 0.1
+        PARAMETERS_ACK_TRIES = 20
+        PARAMETERS_ACK_SLEEP_TIME = 0.1
         first_packet = None
         while self.running:
             self.udp.send(PacketTypes.ACK, -1)
-            time.sleep(HANDSHAKE_ACK_SLEEP_TIME)
+            time.sleep(PARAMETERS_ACK_SLEEP_TIME)
             try:
                 data = self.udp.receive()
                 if data is not None and data[0] == PacketTypes.DATA:
@@ -115,8 +115,8 @@ class Receiver(threading.Thread):
             except BlockingIOError:
                 pass
             counter = counter + 1
-            if counter > HANDSHAKE_ACK_TRIES:
-                self.error('Could not send handshake')
+            if counter > PARAMETERS_ACK_TRIES:
+                self.error('Could not send parameters acknowledgement')
 
         if self.running:
             self.logger.log(LogTypes.INF, 'Handshake successful')
@@ -151,8 +151,8 @@ class Receiver(threading.Thread):
             timer.restart()
 
             type, seq_num, data = temp
-            # receive finish frame (step 6 from sender) its time to stop
-            if type == PacketTypes.FINISH:
+            # if finish frame is received (step 6 from sender) its time to stop
+            if type == PacketTypes.FIN:
                 break
             else:
                 self.logger.log(LogTypes.RCV, f'Packet {seq_num} received.')
@@ -189,7 +189,7 @@ class Receiver(threading.Thread):
         FINISH_SLEEP_TIME = 0.1
         while self.running:
             # send finish ack (step 7 from sender)
-            self.udp.send(PacketTypes.FINISH)
+            self.udp.send(PacketTypes.FIN)
             time.sleep(FINISH_SLEEP_TIME)
             counter += 1
             if counter > FINISH_TRIES:
@@ -208,8 +208,8 @@ class Receiver(threading.Thread):
         self.terminate()
 
 
-def run_receiver(foldername):
-    receiver = Receiver(foldername)
+def run_receiver(foldername, sender_ip):
+    receiver = Receiver(foldername, sender_ip)
     receiver.run()
 
 
@@ -219,4 +219,4 @@ if __name__ == '__main__':
     foldername = f"test"
     sender_ip = '127.0.0.1'
 
-    run_receiver(foldername)
+    run_receiver(foldername, sender_ip)

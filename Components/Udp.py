@@ -19,11 +19,11 @@ class Udp:
         self.packet_handler = PacketHandler.PacketHandler(source_port, destination_port, CORRUPTION_CHANCE, LOG_SIGNAL)
 
         self.loss_chance = LOSS_CHANCE
-        if DATA_MAX_SIZE > self.packet_handler.HANDSHAKE_SIZE:
+        if DATA_MAX_SIZE > self.packet_handler.PARAMETERS_SIZE:
             self.buffer_size = DATA_MAX_SIZE
         else:
             self.buffer_size = 0
-            self.update_buffer_size(self.packet_handler.HEADER_SIZE + self.packet_handler.HANDSHAKE_SIZE)
+            self.update_buffer_size(self.packet_handler.HEADER_SIZE + self.packet_handler.PARAMETERS_SIZE)
 
         self.logger = Logger.Logger(LOG_SIGNAL)
 
@@ -34,11 +34,11 @@ class Udp:
         self.packet_handler.make(type, seq_num, data)
         self.socket.sendto(self.packet_handler.get_bytes(), self.destination_address)
 
-    def send_handshake(self, data_max_size, loss_chance, corruption_chance, filename):
+    def send_parameters(self, data_max_size, loss_chance, corruption_chance, filename):
         if random.randint(0, 1000) <= self.loss_chance:
             self.logger.log(LogTypes.WRN, 'Packet was lost')
             return
-        self.packet_handler.make_handshake(PacketTypes.HANDSHAKE, data_max_size, loss_chance,
+        self.packet_handler.make_parameters(PacketTypes.PRMT, data_max_size, loss_chance,
                                            corruption_chance, filename)
         self.socket.sendto(self.packet_handler.get_bytes(), self.destination_address)
 
@@ -53,7 +53,7 @@ class Udp:
         if packet_bytes is None:
             return False
         temp = self.packet_handler.unmake(packet_bytes)
-        if temp is None or temp[0] != PacketTypes.REQUEST:
+        if temp is None or temp[0] != PacketTypes.REQ:
             return False
 
         self.destination_address = address
@@ -69,10 +69,11 @@ class Udp:
         temp = self.packet_handler.unmake(packet_bytes)
         if temp is None:
             return None
-        elif temp[0] != PacketTypes.HANDSHAKE:
+        elif temp[0] != PacketTypes.PRMT:
             return temp
         else:
-            self.update_buffer_size(temp[2] + self.packet_handler.HEADER_SIZE)
+            if temp[2] > self.packet_handler.PARAMETERS_SIZE:
+                self.update_buffer_size(temp[2] + self.packet_handler.HEADER_SIZE)
             self.set_loss_chance(temp[3])
             return temp[0], temp[1], temp[4]
 

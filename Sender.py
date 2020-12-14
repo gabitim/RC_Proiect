@@ -56,8 +56,8 @@ class Sender(threading.Thread):
         """Logic:
             ---- handshake process ----
             1. wait for request
-            2. send handshake response
-            3. wait for handshake ack
+            2. send parameters
+            3. wait for parameters ack (seq_num = -1)
             ---- sending data ----
             4. load the file into ram, make frames, calculate no of frames
             5. start the go back n process
@@ -80,18 +80,21 @@ class Sender(threading.Thread):
             try:
 
                 self.wait_for_request()
-                self.handshake()
+                if self.running:
+                    self.handshake()
 
                 """step 4."""
-                frames = self.read_data()
-                number_of_frames = len(frames)
+                if self.running:
+                    frames = self.read_data()
 
-                self.last_ack_received = -1
-                last_frame_sent = -1
-                self.timer = Timer.Timer(self.TIMEOUT)
-                timeout_counter = 0
-                MAX_TIMEOUTS = 50
-                window_size = min(self.WINDOW_SIZE, number_of_frames)
+                if self.running:
+                    number_of_frames = len(frames)
+                    self.last_ack_received = -1
+                    last_frame_sent = -1
+                    self.timer = Timer.Timer(self.TIMEOUT)
+                    timeout_counter = 0
+                    MAX_TIMEOUTS = 50
+                    window_size = min(self.WINDOW_SIZE, number_of_frames)
 
                 """step 5."""
                 """GO BACK N LOGIC  --> # we run until all the packets are delivered"""
@@ -159,26 +162,26 @@ class Sender(threading.Thread):
         last_sep = max(last_sep, self.FILENAME.rfind('/'))
 
         counter = 0
-        HANDSHAKE_TRIES = 60
-        HANDSHAKE_SLEEP_TIME = 0.1
+        PARAMETERS_TRIES = 60
+        PARAMETERS_SLEEP_TIME = 0.1
         while self.running:
 
             """step 2."""
-            self.udp.send_handshake(self.DATA_MAX_SIZE,
+            self.udp.send_parameters(self.DATA_MAX_SIZE,
                                     self.LOSS_CHANCE,
                                     self.CORRUPTION_CHANCE,
                                     self.FILENAME[last_sep + 1:])
-            time.sleep(HANDSHAKE_SLEEP_TIME)
+            time.sleep(PARAMETERS_SLEEP_TIME)
             try:
                 """step 3."""
                 data = self.udp.receive()
-                if data is not None and data[0] == PacketTypes.ACK:
+                if data is not None and data[0] == PacketTypes.ACK and data[1] == -1:
                     break
             except BlockingIOError:
                 pass
             counter = counter + 1
-            if counter > HANDSHAKE_TRIES:
-                self.error('Could not send handshake')
+            if counter > PARAMETERS_TRIES:
+                self.error('Could not send parameters')
 
         if self.running:
             self.logger.log(LogTypes.INF, 'Handshake successful')
@@ -187,11 +190,11 @@ class Sender(threading.Thread):
         if self.running is False:
             return []
 
+        # create packets and add to buffer
+        frames = []
+        file = None
         try:
             file = open(self.FILENAME, 'rb')
-
-            # create packets and add to buffer
-            frames = []
 
             while True:
                 data = file.read(self.DATA_MAX_SIZE)
@@ -204,9 +207,11 @@ class Sender(threading.Thread):
         except:
             self.error(f'Unexpected file error')
         finally:
-            file.close()
+            if file is not None and not file.closed:
+                file.close()
 
-        self.logger.log(LogTypes.INF, f'{len(frames)} were created')
+        if self.running:
+            self.logger.log(LogTypes.INF, f'{len(frames)} were created')
         return frames
 
     def check_response(self):
@@ -235,12 +240,12 @@ class Sender(threading.Thread):
         FINISH_SLEEP_TIME = 0.1
         while self.running:
             """step 6."""
-            self.udp.send(PacketTypes.FINISH)
+            self.udp.send(PacketTypes.FIN)
             time.sleep(FINISH_SLEEP_TIME)
             try:
                 """step 7."""
                 temp = self.udp.receive()
-                if temp is not None and temp[0] == PacketTypes.FINISH:
+                if temp is not None and temp[0] == PacketTypes.FIN:
                     break
             except BlockingIOError:
                 pass
