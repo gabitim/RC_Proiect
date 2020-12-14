@@ -103,7 +103,7 @@ class Receiver(threading.Thread):
         counter = 0
         PARAMETERS_ACK_TRIES = 20
         PARAMETERS_ACK_SLEEP_TIME = 0.1
-        first_packet = None
+        first_data_packet = None
         while self.running:
             self.udp.send(PacketTypes.ACK, -1)
             time.sleep(PARAMETERS_ACK_SLEEP_TIME)
