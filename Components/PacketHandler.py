@@ -21,7 +21,7 @@ from enums.packettypes import PacketTypes
 # THE REST OF THIS CLASS USES BYTES ONLY!!!
 class PacketHandler:
     HEADER_SIZE = 16
-    PARAMETERS_SIZE = 10
+    PARAMETERS_SIZE = 64
 
     def __init__(self, source_port, destination_port, CORRUPTION_CHANCE, LOG_SIGNAL=None):
         self.source_port = source_port
@@ -50,7 +50,7 @@ class PacketHandler:
         self.data = data_max_size.to_bytes(2, 'little')
         self.data += loss_chance.to_bytes(2, 'little')
         self.data += corruption_chance.to_bytes(2, 'little')
-        self.data += filename.encode().ljust(4, b'\0')
+        self.data += filename.encode().ljust(58, b'\0')
 
         self.compute_length()
         self.compute_checksum()
