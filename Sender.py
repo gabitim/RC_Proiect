@@ -88,48 +88,15 @@ class Sender(threading.Thread):
                     frames = self.read_data()
 
                 if self.running:
-                    number_of_frames = len(frames)
+
                     self.last_ack_received = -1
-                    last_frame_sent = -1
+
                     self.timer = Timer.Timer(self.TIMEOUT)
-                    timeout_counter = 0
-                    MAX_TIMEOUTS = 50
-                    window_size = min(self.WINDOW_SIZE, number_of_frames)
 
                 """step 5."""
                 """GO BACK N LOGIC  --> # we run until all the packets are delivered"""
-                while self.running and self.last_ack_received < number_of_frames - 1:
-
-                    # send the packets from window
-                    while last_frame_sent < self.last_ack_received + window_size:
-                        last_frame_sent += 1
-                        while self.running:  # try sending until buffer has space
-                            try:
-                                self.udp.send(PacketTypes.DATA, last_frame_sent, frames[last_frame_sent])
-                                break
-                            except BlockingIOError:
-                                pass
-
-                        self.logger.log(LogTypes.SNT, f'Packet {last_frame_sent} sent.')
-
-                    self.timer.start()
-
-                    while not self.timer.timeout() and self.timer.running():
-                        self.check_response()
-
-                    if self.timer.timeout():
-                        self.logger.log(LogTypes.INF, f'Timeout. Resending window.')
-                        self.timer.stop()
-                        # we send all the packets from window again
-                        last_frame_sent = self.last_ack_received
-
-                        timeout_counter += 1
-                        if timeout_counter > MAX_TIMEOUTS:
-                            self.error('Max timeouts for the same window reached')
-                    else:
-                        # if we didnt timeout that means we got a correct ack
-                        timeout_counter = 0
-                        window_size = min(self.WINDOW_SIZE, number_of_frames - self.last_ack_received - 1)
+                if self.running:
+                    self.send_packets(frames)
 
                 if self.running:  # normal sender execution end
                     self.finish()
@@ -213,6 +180,46 @@ class Sender(threading.Thread):
         if self.running:
             self.logger.log(LogTypes.INF, f'{len(frames)} were created')
         return frames
+
+    def send_packets(self, frames):
+        number_of_frames = len(frames)
+        last_frame_sent = -1
+        timeout_counter = 0
+        MAX_TIMEOUTS = 50
+        window_size = min(self.WINDOW_SIZE, number_of_frames)
+
+        while self.running and self.last_ack_received < number_of_frames - 1:
+
+            # send the packets from window
+            while last_frame_sent < self.last_ack_received + window_size:
+                last_frame_sent += 1
+                while self.running:  # try sending until buffer has space
+                    try:
+                        self.udp.send(PacketTypes.DATA, last_frame_sent, frames[last_frame_sent])
+                        break
+                    except BlockingIOError:
+                        pass
+
+                self.logger.log(LogTypes.SNT, f'Packet {last_frame_sent} sent.')
+
+            self.timer.start()
+
+            while not self.timer.timeout() and self.timer.running():
+                self.check_response()
+
+            if self.timer.timeout():
+                self.logger.log(LogTypes.INF, f'Timeout. Resending window.')
+                self.timer.stop()
+                # we send all the packets from window again
+                last_frame_sent = self.last_ack_received
+
+                timeout_counter += 1
+                if timeout_counter > MAX_TIMEOUTS:
+                    self.error('Max timeouts for the same window reached')
+            else:
+                # if we didnt timeout that means we got a correct ack
+                timeout_counter = 0
+                window_size = min(self.WINDOW_SIZE, number_of_frames - self.last_ack_received - 1)
 
     def check_response(self):
         try:
